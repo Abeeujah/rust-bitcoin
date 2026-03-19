@@ -269,6 +269,12 @@ impl<T: Decodable> Decoder for VecDecoder<T> {
     fn end(self) -> Result<Self::Output, Self::Error> {
         use VecDecoderErrorInner as E;
 
+        if let Some(ref prefix_decoder) = self.prefix_decoder {
+            return Err(VecDecoderError(E::UnexpectedEof(UnexpectedEofError {
+                missing: prefix_decoder.read_limit(),
+            })));
+        }
+
         if self.buffer.len() == self.length {
             Ok(self.buffer)
         } else {
@@ -1326,6 +1332,20 @@ mod tests {
         fn decoder() -> Self::Decoder { TestDecoder(VecDecoder::new()) }
     }
 
+    #[test]
+    #[cfg(feature = "alloc")]
+    fn vec_decoder_empty_no_bytes() {
+        // Empty slice. Note the lack of a 0 compact size.
+        let encoded = &[];
+    
+        let mut slice = encoded.as_slice();
+        let mut decoder = Test::decoder();
+        // Should want more bytes since we've provided nothing
+        assert!(decoder.push_bytes(&mut slice).unwrap());
+    
+        let _ = decoder.end().unwrap_err();
+    }
+    
     #[test]
     #[cfg(feature = "alloc")]
     fn vec_decoder_empty() {
