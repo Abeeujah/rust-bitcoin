@@ -124,17 +124,17 @@ impl<'e, const N: usize> core::marker::Unpin for bitcoin_consensus_encoding::Arr
 impl<'e, const N: usize> core::marker::UnsafeUnpin for bitcoin_consensus_encoding::ArrayRefEncoder<'e, N>
 impl<'e, const N: usize> core::panic::unwind_safe::RefUnwindSafe for bitcoin_consensus_encoding::ArrayRefEncoder<'e, N>
 impl<'e, const N: usize> core::panic::unwind_safe::UnwindSafe for bitcoin_consensus_encoding::ArrayRefEncoder<'e, N>
-impl<'sl> bitcoin_consensus_encoding::BytesEncoder<'sl>
-impl<'sl> bitcoin_consensus_encoding::ExactSizeEncoder for bitcoin_consensus_encoding::BytesEncoder<'sl>
-impl<'sl> core::clone::Clone for bitcoin_consensus_encoding::BytesEncoder<'sl>
-impl<'sl> core::fmt::Debug for bitcoin_consensus_encoding::BytesEncoder<'sl>
-impl<'sl> core::marker::Freeze for bitcoin_consensus_encoding::BytesEncoder<'sl>
-impl<'sl> core::marker::Send for bitcoin_consensus_encoding::BytesEncoder<'sl>
-impl<'sl> core::marker::Sync for bitcoin_consensus_encoding::BytesEncoder<'sl>
-impl<'sl> core::marker::Unpin for bitcoin_consensus_encoding::BytesEncoder<'sl>
-impl<'sl> core::marker::UnsafeUnpin for bitcoin_consensus_encoding::BytesEncoder<'sl>
-impl<'sl> core::panic::unwind_safe::RefUnwindSafe for bitcoin_consensus_encoding::BytesEncoder<'sl>
-impl<'sl> core::panic::unwind_safe::UnwindSafe for bitcoin_consensus_encoding::BytesEncoder<'sl>
+impl<'e> bitcoin_consensus_encoding::BytesEncoder<'e>
+impl<'e> bitcoin_consensus_encoding::ExactSizeEncoder for bitcoin_consensus_encoding::BytesEncoder<'e>
+impl<'e> core::clone::Clone for bitcoin_consensus_encoding::BytesEncoder<'e>
+impl<'e> core::fmt::Debug for bitcoin_consensus_encoding::BytesEncoder<'e>
+impl<'e> core::marker::Freeze for bitcoin_consensus_encoding::BytesEncoder<'e>
+impl<'e> core::marker::Send for bitcoin_consensus_encoding::BytesEncoder<'e>
+impl<'e> core::marker::Sync for bitcoin_consensus_encoding::BytesEncoder<'e>
+impl<'e> core::marker::Unpin for bitcoin_consensus_encoding::BytesEncoder<'e>
+impl<'e> core::marker::UnsafeUnpin for bitcoin_consensus_encoding::BytesEncoder<'e>
+impl<'e> core::panic::unwind_safe::RefUnwindSafe for bitcoin_consensus_encoding::BytesEncoder<'e>
+impl<'e> core::panic::unwind_safe::UnwindSafe for bitcoin_consensus_encoding::BytesEncoder<'e>
 impl<A, B, C, D, E, F> bitcoin_consensus_encoding::Decoder for bitcoin_consensus_encoding::Decoder6<A, B, C, D, E, F> where A: bitcoin_consensus_encoding::Decoder, B: bitcoin_consensus_encoding::Decoder, C: bitcoin_consensus_encoding::Decoder, D: bitcoin_consensus_encoding::Decoder, E: bitcoin_consensus_encoding::Decoder, F: bitcoin_consensus_encoding::Decoder
 impl<A, B, C, D, E, F> bitcoin_consensus_encoding::Decoder6<A, B, C, D, E, F> where A: bitcoin_consensus_encoding::Decoder, B: bitcoin_consensus_encoding::Decoder, C: bitcoin_consensus_encoding::Decoder, D: bitcoin_consensus_encoding::Decoder, E: bitcoin_consensus_encoding::Decoder, F: bitcoin_consensus_encoding::Decoder
 impl<A, B, C, D, E, F> bitcoin_consensus_encoding::Encoder6<A, B, C, D, E, F>
@@ -382,7 +382,7 @@ pub const fn bitcoin_consensus_encoding::ArrayDecoder<N>::new() -> Self
 pub const fn bitcoin_consensus_encoding::ArrayEncoder<N>::without_length_prefix(arr: [u8; N]) -> Self
 pub const fn bitcoin_consensus_encoding::ArrayRefEncoder<'e, N>::without_length_prefix(arr: &'e [u8; N]) -> Self
 pub const fn bitcoin_consensus_encoding::ByteVecDecoder::new() -> Self
-pub const fn bitcoin_consensus_encoding::BytesEncoder<'sl>::without_length_prefix(sl: &'sl [u8]) -> Self
+pub const fn bitcoin_consensus_encoding::BytesEncoder<'e>::without_length_prefix(sl: &'e [u8]) -> Self
 pub const fn bitcoin_consensus_encoding::CompactSizeDecoder::new() -> Self
 pub const fn bitcoin_consensus_encoding::CompactSizeDecoder::new_with_limit(limit: usize) -> Self
 pub const fn bitcoin_consensus_encoding::CompactSizeEncoder::encoded_size(value: usize) -> usize
@@ -430,9 +430,9 @@ pub fn bitcoin_consensus_encoding::ByteVecDecoderError::from(never: core::conver
 pub fn bitcoin_consensus_encoding::ByteVecDecoderError::source(&self) -> core::option::Option<&(dyn core::error::Error + 'static)>
 pub fn bitcoin_consensus_encoding::BytesEncoder<'_>::advance(&mut self) -> bool
 pub fn bitcoin_consensus_encoding::BytesEncoder<'_>::current_chunk(&self) -> &[u8]
-pub fn bitcoin_consensus_encoding::BytesEncoder<'sl>::clone(&self) -> bitcoin_consensus_encoding::BytesEncoder<'sl>
-pub fn bitcoin_consensus_encoding::BytesEncoder<'sl>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn bitcoin_consensus_encoding::BytesEncoder<'sl>::len(&self) -> usize
+pub fn bitcoin_consensus_encoding::BytesEncoder<'e>::clone(&self) -> bitcoin_consensus_encoding::BytesEncoder<'e>
+pub fn bitcoin_consensus_encoding::BytesEncoder<'e>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn bitcoin_consensus_encoding::BytesEncoder<'e>::len(&self) -> usize
 pub fn bitcoin_consensus_encoding::CompactSizeDecoder::clone(&self) -> bitcoin_consensus_encoding::CompactSizeDecoder
 pub fn bitcoin_consensus_encoding::CompactSizeDecoder::default() -> Self
 pub fn bitcoin_consensus_encoding::CompactSizeDecoder::end(self) -> core::result::Result<Self::Output, Self::Error>
@@ -563,7 +563,7 @@ pub struct bitcoin_consensus_encoding::ArrayEncoder<const N: usize>
 pub struct bitcoin_consensus_encoding::ArrayRefEncoder<'e, const N: usize>
 pub struct bitcoin_consensus_encoding::ByteVecDecoder
 pub struct bitcoin_consensus_encoding::ByteVecDecoderError(_)
-pub struct bitcoin_consensus_encoding::BytesEncoder<'sl>
+pub struct bitcoin_consensus_encoding::BytesEncoder<'e>
 pub struct bitcoin_consensus_encoding::CompactSizeDecoder
 pub struct bitcoin_consensus_encoding::CompactSizeDecoderError(_)
 pub struct bitcoin_consensus_encoding::CompactSizeEncoder
