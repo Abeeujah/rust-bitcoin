@@ -23,13 +23,13 @@ const SIZE: usize = 9;
 
 /// An encoder for a single byte slice.
 #[derive(Debug, Clone)]
-pub struct BytesEncoder<'sl> {
-    sl: Option<&'sl [u8]>,
+pub struct BytesEncoder<'e> {
+    sl: Option<&'e [u8]>,
 }
 
-impl<'sl> BytesEncoder<'sl> {
+impl<'e> BytesEncoder<'e> {
     /// Constructs a byte encoder which encodes the given byte slice, with no length prefix.
-    pub const fn without_length_prefix(sl: &'sl [u8]) -> Self { Self { sl: Some(sl) } }
+    pub const fn without_length_prefix(sl: &'e [u8]) -> Self { Self { sl: Some(sl) } }
 }
 
 impl Encoder for BytesEncoder<'_> {
@@ -41,7 +41,7 @@ impl Encoder for BytesEncoder<'_> {
     }
 }
 
-impl<'sl> ExactSizeEncoder for BytesEncoder<'sl> {
+impl<'e> ExactSizeEncoder for BytesEncoder<'e> {
     #[inline]
     fn len(&self) -> usize { self.sl.map_or(0, <[u8]>::len) }
 }
