@@ -10,7 +10,7 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::{cmp, fmt};
+use core::{cmp, fmt, mem};
 
 #[cfg(feature = "arbitrary")]
 use arbitrary::{Arbitrary, Unstructured};
@@ -26,7 +26,7 @@ use primitives::block::{self, HeaderDecoder, HeaderEncoder};
 use primitives::transaction;
 use units::FeeRate;
 
-use self::error::V1NetworkMessageDecoderErrorInner;
+use self::error::{V1NetworkMessageDecoderErrorInner, V2NetworkMessageDecoderErrorInner};
 use crate::address::{AddrV1Message, AddrV2Message};
 use crate::consensus::{impl_consensus_encoding, impl_vec_wrapper};
 use crate::merkle_tree::MerkleBlock;
@@ -41,7 +41,7 @@ pub use self::error::{
     AddrPayloadDecoderError, AddrV2PayloadDecoderError, CommandStringDecoderError,
     CommandStringError, HeadersMessageDecoderError, InventoryPayloadDecoderError,
     NetworkHeaderDecoderError, PingDecoderError, PongDecoderError,
-    V1MessageHeaderDecoderError, V1NetworkMessageDecoderError,
+    V1MessageHeaderDecoderError, V1NetworkMessageDecoderError, V2NetworkMessageDecoderError
 };
 
 /// The maximum number of [`super::message_blockdata::Inventory`] items in an `inv` message.
@@ -1349,12 +1349,20 @@ impl encoding::Decoder for NetworkMessageDecoder {
             Self::AddrV2(d) => d.push_bytes(bytes).map_err(|_| err),
             Self::Empty(_) => Ok(false),
             Self::Unknown { remaining, buffer, .. } => {
-                let copy_len = bytes.len().min(*remaining);
-                let (to_copy, rest) = bytes.split_at(copy_len);
-                buffer.extend_from_slice(to_copy);
-                *bytes = rest;
-                *remaining -= copy_len;
-                Ok(*remaining > 0)
+                if *remaining == 0 {
+                    // stream mode: no known payload length, buffer all input.
+                    buffer.extend_from_slice(bytes);
+                    *bytes = &[];
+                    Ok(false)
+                } else {
+                    // fixed-length mode: consume exactly `remaining` bytes.
+                    let copy_len = bytes.len().min(*remaining);
+                    let (to_copy, rest) = bytes.split_at(copy_len);
+                    buffer.extend_from_slice(to_copy);
+                    *bytes = rest;
+                    *remaining -= copy_len;
+                    Ok(*remaining > 0)
+                }
             }
         }
     }
@@ -1584,49 +1592,104 @@ impl encoding::Decodable for V1NetworkMessage {
     }
 }
 
+/// Encoder for [`V2NetworkMessage`].
+///
+/// V2 messages encode a 1-byte short ID for optimized message types (IDs 1-28),
+/// or a 0-byte flag followed by a 12-byte command string for non-optimized types.
+#[derive(Clone, Debug)]
+pub enum V2NetworkMessageEncoder<'e> {
+    /// Optimized message with a 1-byte short ID followed by the payload.
+    ShortId(Encoder2<ArrayEncoder<1>, NetworkMessageEncoder<'e>>),
+    /// Non-optimized message with a 0-byte flag, 12-byte command, and payload.
+    FullCommand(
+        Encoder2<ArrayEncoder<1>, Encoder2<CommandStringEncoder, NetworkMessageEncoder<'e>>>,
+    ),
+}
+
+impl encoding::Encoder for V2NetworkMessageEncoder<'_> {
+    fn current_chunk(&self) -> &[u8] {
+        match self {
+            Self::ShortId(e) => e.current_chunk(),
+            Self::FullCommand(e) => e.current_chunk(),
+        }
+    }
+
+    fn advance(&mut self) -> bool {
+        match self {
+            Self::ShortId(e) => e.advance(),
+            Self::FullCommand(e) => e.advance(),
+        }
+    }
+}
+
+impl encoding::Encodable for V2NetworkMessage {
+    type Encoder<'e> = V2NetworkMessageEncoder<'e>;
+
+    fn encoder(&self) -> Self::Encoder<'_> {
+        let (short_id, full_command) = v2_command_byte(&self.payload);
+        let payload_encoder = NetworkMessageEncoder::new(&self.payload);
+
+        match full_command {
+            Some(cmd) => V2NetworkMessageEncoder::FullCommand(Encoder2::new(
+                ArrayEncoder::without_length_prefix([short_id]),
+                Encoder2::new(cmd.encoder(), payload_encoder),
+            )),
+            None => V2NetworkMessageEncoder::ShortId(Encoder2::new(
+                ArrayEncoder::without_length_prefix([short_id]),
+                payload_encoder,
+            )),
+        }
+    }
+}
+
+// Returns the V2 short ID byte and optional full command for a [`NetworkMessage`].
+fn v2_command_byte(payload: &NetworkMessage) -> (u8, Option<CommandString>) {
+    match payload {
+        NetworkMessage::Addr(_) => (1u8, None),
+        NetworkMessage::Block(_) => (2u8, None),
+        NetworkMessage::BlockTxn(_) => (3u8, None),
+        NetworkMessage::CmpctBlock(_) => (4u8, None),
+        NetworkMessage::FeeFilter(_) => (5u8, None),
+        NetworkMessage::FilterAdd(_) => (6u8, None),
+        NetworkMessage::FilterClear => (7u8, None),
+        NetworkMessage::FilterLoad(_) => (8u8, None),
+        NetworkMessage::GetBlocks(_) => (9u8, None),
+        NetworkMessage::GetBlockTxn(_) => (10u8, None),
+        NetworkMessage::GetData(_) => (11u8, None),
+        NetworkMessage::GetHeaders(_) => (12u8, None),
+        NetworkMessage::Headers(_) => (13u8, None),
+        NetworkMessage::Inv(_) => (14u8, None),
+        NetworkMessage::MemPool => (15u8, None),
+        NetworkMessage::MerkleBlock(_) => (16u8, None),
+        NetworkMessage::NotFound(_) => (17u8, None),
+        NetworkMessage::Ping(_) => (18u8, None),
+        NetworkMessage::Pong(_) => (19u8, None),
+        NetworkMessage::SendCmpct(_) => (20u8, None),
+        NetworkMessage::Tx(_) => (21u8, None),
+        NetworkMessage::GetCFilters(_) => (22u8, None),
+        NetworkMessage::CFilter(_) => (23u8, None),
+        NetworkMessage::GetCFHeaders(_) => (24u8, None),
+        NetworkMessage::CFHeaders(_) => (25u8, None),
+        NetworkMessage::GetCFCheckpt(_) => (26u8, None),
+        NetworkMessage::CFCheckpt(_) => (27u8, None),
+        NetworkMessage::AddrV2(_) => (28u8, None),
+        NetworkMessage::Version(_)
+        | NetworkMessage::Verack
+        | NetworkMessage::SendHeaders
+        | NetworkMessage::GetAddr
+        | NetworkMessage::WtxidRelay
+        | NetworkMessage::SendAddrV2
+        | NetworkMessage::Alert(_)
+        | NetworkMessage::Reject(_)
+        | NetworkMessage::Unknown { .. } => (0u8, Some(payload.command())),
+    }
+}
+
 impl Encodable for V2NetworkMessage {
     fn consensus_encode<W: Write + ?Sized>(&self, writer: &mut W) -> Result<usize, io::Error> {
         // A subset of message types are optimized to only use one byte to encode the command.
         // Non-optimized message types use the zero-byte flag and the following twelve bytes to encode the command.
-        let (command_byte, full_command) = match self.payload {
-            NetworkMessage::Addr(_) => (1u8, None),
-            NetworkMessage::Inv(_) => (14u8, None),
-            NetworkMessage::GetData(_) => (11u8, None),
-            NetworkMessage::NotFound(_) => (17u8, None),
-            NetworkMessage::GetBlocks(_) => (9u8, None),
-            NetworkMessage::GetHeaders(_) => (12u8, None),
-            NetworkMessage::MemPool => (15u8, None),
-            NetworkMessage::Tx(_) => (21u8, None),
-            NetworkMessage::Block(_) => (2u8, None),
-            NetworkMessage::Headers(_) => (13u8, None),
-            NetworkMessage::Ping(_) => (18u8, None),
-            NetworkMessage::Pong(_) => (19u8, None),
-            NetworkMessage::MerkleBlock(_) => (16u8, None),
-            NetworkMessage::FilterLoad(_) => (8u8, None),
-            NetworkMessage::FilterAdd(_) => (6u8, None),
-            NetworkMessage::FilterClear => (7u8, None),
-            NetworkMessage::GetCFilters(_) => (22u8, None),
-            NetworkMessage::CFilter(_) => (23u8, None),
-            NetworkMessage::GetCFHeaders(_) => (24u8, None),
-            NetworkMessage::CFHeaders(_) => (25u8, None),
-            NetworkMessage::GetCFCheckpt(_) => (26u8, None),
-            NetworkMessage::CFCheckpt(_) => (27u8, None),
-            NetworkMessage::SendCmpct(_) => (20u8, None),
-            NetworkMessage::CmpctBlock(_) => (4u8, None),
-            NetworkMessage::GetBlockTxn(_) => (10u8, None),
-            NetworkMessage::BlockTxn(_) => (3u8, None),
-            NetworkMessage::FeeFilter(_) => (5u8, None),
-            NetworkMessage::AddrV2(_) => (28u8, None),
-            NetworkMessage::Version(_)
-            | NetworkMessage::Verack
-            | NetworkMessage::SendHeaders
-            | NetworkMessage::GetAddr
-            | NetworkMessage::WtxidRelay
-            | NetworkMessage::SendAddrV2
-            | NetworkMessage::Alert(_)
-            | NetworkMessage::Reject(_)
-            | NetworkMessage::Unknown { .. } => (0u8, Some(self.payload.command())),
-        };
+        let (command_byte, full_command) = v2_command_byte(&self.payload);
 
         let mut len = command_byte.consensus_encode(writer)?;
         if let Some(cmd) = full_command {
@@ -1967,6 +2030,223 @@ impl Decodable for V2NetworkMessage {
     }
 }
 
+// State machine for decoding a [`V2NetworkMessage`].
+#[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
+enum V2NetworkMessageDecoderState {
+    // Decoding the short-id byte, with the command string and payload decoder
+    // waiting.
+    ShortId(encoding::ArrayDecoder<1>),
+    // Decoding the command string with the short-id byte stored, and payload
+    // decoder waiting.
+    CommandString(CommandStringDecoder),
+    // Decoding the payload, with the short-id and command string.
+    Payload(NetworkMessageDecoder),
+    // Decoder has failed and cannot be used again.
+    Errored,
+}
+
+/// Decoder for [`V2NetworkMessage`].
+///
+/// This decoder implements a multi-phase decoding process for Bitcoin V2 P2P messages.
+/// It first decodes the 1-byte short ID. For optimized messages (IDs 1-28), it dispatches
+/// directly to the payload decoder. For non-optimized messages (ID 0), it first reads the
+/// 12-byte command string before dispatching.
+pub struct V2NetworkMessageDecoder {
+    state: V2NetworkMessageDecoderState,
+}
+
+impl V2NetworkMessageDecoder {
+    /// Creates a payload decoder from a short ID (1-28).
+    fn payload_decoder_from_short_id(
+        short_id: u8,
+    ) -> Result<NetworkMessageDecoder, V2NetworkMessageDecoderError> {
+        use encoding::Decodable as _;
+
+        let err = V2NetworkMessageDecoderError(V2NetworkMessageDecoderErrorInner::Payload(
+            V1NetworkMessageDecoderError(V1NetworkMessageDecoderErrorInner::Payload),
+        ));
+        // Use a large payload_len for the Unknown variant buffer; actual messages use typed decoders.
+        match short_id {
+            1u8 => Ok(NetworkMessageDecoder::Addr(AddrPayload::decoder())),
+            2u8 => Ok(NetworkMessageDecoder::Block(block::Block::decoder())),
+            3u8 => Ok(NetworkMessageDecoder::BlockTxn(bip152::BlockTransactions::decoder())),
+            4u8 => Ok(NetworkMessageDecoder::CmpctBlock(bip152::HeaderAndShortIds::decoder())),
+            5u8 => Ok(NetworkMessageDecoder::FeeFilter(FeeFilter::decoder())),
+            6u8 => Ok(NetworkMessageDecoder::FilterAdd(message_bloom::FilterAdd::decoder())),
+            7u8 => Ok(NetworkMessageDecoder::Empty(
+                CommandString::try_from_static("filterclear").map_err(|_| err)?,
+            )),
+            8u8 => Ok(NetworkMessageDecoder::FilterLoad(message_bloom::FilterLoad::decoder())),
+            9u8 =>
+                Ok(NetworkMessageDecoder::GetBlocks(message_blockdata::GetBlocksMessage::decoder())),
+            10u8 =>
+                Ok(NetworkMessageDecoder::GetBlockTxn(bip152::BlockTransactionsRequest::decoder())),
+            11u8 => Ok(NetworkMessageDecoder::GetData(InventoryPayload::decoder())),
+            12u8 => Ok(NetworkMessageDecoder::GetHeaders(
+                message_blockdata::GetHeadersMessage::decoder(),
+            )),
+            13u8 => Ok(NetworkMessageDecoder::Headers(HeadersMessage::decoder())),
+            14u8 => Ok(NetworkMessageDecoder::Inv(InventoryPayload::decoder())),
+            15u8 => Ok(NetworkMessageDecoder::Empty(
+                CommandString::try_from_static("mempool").map_err(|_| err)?,
+            )),
+            16u8 => Ok(NetworkMessageDecoder::MerkleBlock(MerkleBlock::decoder())),
+            17u8 => Ok(NetworkMessageDecoder::NotFound(InventoryPayload::decoder())),
+            18u8 => Ok(NetworkMessageDecoder::Ping(Ping::decoder())),
+            19u8 => Ok(NetworkMessageDecoder::Pong(Pong::decoder())),
+            20u8 =>
+                Ok(NetworkMessageDecoder::SendCmpct(message_compact_blocks::SendCmpct::decoder())),
+            21u8 => Ok(NetworkMessageDecoder::Tx(transaction::Transaction::decoder())),
+            22u8 => Ok(NetworkMessageDecoder::GetCFilters(message_filter::GetCFilters::decoder())),
+            23u8 => Ok(NetworkMessageDecoder::CFilter(message_filter::CFilter::decoder())),
+            24u8 =>
+                Ok(NetworkMessageDecoder::GetCFHeaders(message_filter::GetCFHeaders::decoder())),
+            25u8 => Ok(NetworkMessageDecoder::CFHeaders(message_filter::CFHeaders::decoder())),
+            26u8 =>
+                Ok(NetworkMessageDecoder::GetCFCheckpt(message_filter::GetCFCheckpt::decoder())),
+            27u8 => Ok(NetworkMessageDecoder::CFCheckpt(message_filter::CFCheckpt::decoder())),
+            28u8 => Ok(NetworkMessageDecoder::AddrV2(AddrV2Payload::decoder())),
+            id => Err(V2NetworkMessageDecoderError(
+                V2NetworkMessageDecoderErrorInner::UnknownShortId(id),
+            )),
+        }
+    }
+
+    /// Creates a payload decoder from a command string (for short ID == 0).
+    fn payload_decoder_from_command(command: CommandString) -> NetworkMessageDecoder {
+        use encoding::Decodable as _;
+
+        match command.as_ref() {
+            "version" => NetworkMessageDecoder::Version(message_network::VersionMessage::decoder()),
+            "verack" | "sendheaders" | "getaddr" | "wtxidrelay" | "sendaddrv2" =>
+                NetworkMessageDecoder::Empty(command),
+            "alert" => NetworkMessageDecoder::Alert(message_network::Alert::decoder()),
+            "reject" => NetworkMessageDecoder::Reject(message_network::Reject::decoder()),
+            _ => NetworkMessageDecoder::Unknown {
+                command,
+                remaining: 0, // no payload length, buffer all bytes until end().
+                buffer: Vec::new(),
+            },
+        }
+    }
+}
+
+impl encoding::Decoder for V2NetworkMessageDecoder {
+    type Output = V2NetworkMessage;
+    type Error = V2NetworkMessageDecoderError;
+
+    fn push_bytes(&mut self, bytes: &mut &[u8]) -> Result<bool, Self::Error> {
+        loop {
+            match &mut self.state {
+                V2NetworkMessageDecoderState::ShortId(short_id_decoder) => {
+                    if short_id_decoder.push_bytes(bytes).map_err(|_| {
+                        V2NetworkMessageDecoderError(V2NetworkMessageDecoderErrorInner::ShortId)
+                    })? {
+                        return Ok(true);
+                    }
+
+                    match mem::replace(&mut self.state, V2NetworkMessageDecoderState::Errored) {
+                        V2NetworkMessageDecoderState::ShortId(short_id) => {
+                            let short_id_bytes = short_id.end().map_err(|_| {
+                                V2NetworkMessageDecoderError(
+                                    V2NetworkMessageDecoderErrorInner::ShortId,
+                                )
+                            })?;
+                            let id = short_id_bytes[0];
+                            if id == 0 {
+                                // Non-optimized: need to read 12-byte command string next.
+                                self.state = V2NetworkMessageDecoderState::CommandString(
+                                    CommandStringDecoder { inner: encoding::ArrayDecoder::new() },
+                                );
+                            } else {
+                                // Optimized short ID (1-28): skip command, go straight to payload.
+                                let payload_decoder = Self::payload_decoder_from_short_id(id)?;
+                                self.state = V2NetworkMessageDecoderState::Payload(payload_decoder);
+                            }
+                        }
+                        _ => unreachable!("we know we're in First state"),
+                    }
+                }
+                V2NetworkMessageDecoderState::CommandString(command_string_decoder) => {
+                    if command_string_decoder.push_bytes(bytes).map_err(|e| {
+                        V2NetworkMessageDecoderError(V2NetworkMessageDecoderErrorInner::Command(e))
+                    })? {
+                        return Ok(true);
+                    }
+                    match mem::replace(&mut self.state, V2NetworkMessageDecoderState::Errored) {
+                        V2NetworkMessageDecoderState::CommandString(command_string) => {
+                            let command = command_string.end().map_err(|e| {
+                                V2NetworkMessageDecoderError(
+                                    V2NetworkMessageDecoderErrorInner::Command(e),
+                                )
+                            })?;
+                            let payload_decoder =
+                                Self::payload_decoder_from_command(command.clone());
+                            self.state = V2NetworkMessageDecoderState::Payload(payload_decoder);
+                        }
+                        _ => unreachable!("we know we're in the Second state"),
+                    }
+                }
+                V2NetworkMessageDecoderState::Payload(payload_decoder) => {
+                    return payload_decoder.push_bytes(bytes).map_err(|e| {
+                        self.state = V2NetworkMessageDecoderState::Errored;
+                        V2NetworkMessageDecoderError(V2NetworkMessageDecoderErrorInner::Payload(e))
+                    });
+                }
+                V2NetworkMessageDecoderState::Errored => {
+                    panic!("use of failed decoder");
+                }
+            }
+        }
+    }
+
+    fn end(self) -> Result<Self::Output, Self::Error> {
+        match self.state {
+            V2NetworkMessageDecoderState::ShortId(d) => {
+                d.end().map_err(|_| {
+                    V2NetworkMessageDecoderError(V2NetworkMessageDecoderErrorInner::ShortId)
+                })?;
+                unreachable!("incomplete ShortId decoder should error")
+            }
+            V2NetworkMessageDecoderState::CommandString(d) => {
+                d.end().map_err(|e| {
+                    V2NetworkMessageDecoderError(V2NetworkMessageDecoderErrorInner::Command(e))
+                })?;
+                unreachable!("incomplete CommandString decoder should error")
+            }
+            V2NetworkMessageDecoderState::Payload(payload_decoder) => {
+                let payload = payload_decoder.end().map_err(|e| {
+                    V2NetworkMessageDecoderError(V2NetworkMessageDecoderErrorInner::Payload(e))
+                })?;
+                Ok(V2NetworkMessage { payload })
+            }
+            V2NetworkMessageDecoderState::Errored => panic!("use of failed decoder"),
+        }
+    }
+
+    fn read_limit(&self) -> usize {
+        match &self.state {
+            V2NetworkMessageDecoderState::ShortId(short_id_decoder) =>
+                short_id_decoder.read_limit(),
+            V2NetworkMessageDecoderState::CommandString(command_string_decoder) =>
+                command_string_decoder.read_limit(),
+            V2NetworkMessageDecoderState::Payload(payload_decoder) => payload_decoder.read_limit(),
+            V2NetworkMessageDecoderState::Errored => 0,
+        }
+    }
+}
+
+impl encoding::Decodable for V2NetworkMessage {
+    type Decoder = V2NetworkMessageDecoder;
+
+    fn decoder() -> Self::Decoder {
+        V2NetworkMessageDecoder {
+            state: V2NetworkMessageDecoderState::ShortId(encoding::ArrayDecoder::new()),
+        }
+    }
+}
+
 /// Data and a 4-byte checksum.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct CheckedData {
@@ -2291,6 +2571,53 @@ pub mod error {
         }
     }
 
+    /// Error decoding a V2 network message.
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    pub struct V2NetworkMessageDecoderError(pub(super) V2NetworkMessageDecoderErrorInner);
+
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    pub(super) enum V2NetworkMessageDecoderErrorInner {
+        /// Error decoding the short ID byte.
+        ShortId,
+        /// Error decoding the command string.
+        Command(CommandStringDecoderError),
+        /// Error decoding the message payload.
+        Payload(V1NetworkMessageDecoderError),
+        /// Unknown short ID value.
+        UnknownShortId(u8),
+    }
+
+    impl fmt::Display for V2NetworkMessageDecoderError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self.0 {
+                V2NetworkMessageDecoderErrorInner::ShortId => {
+                    write!(f, "error decoding V2 message short ID")
+                }
+                V2NetworkMessageDecoderErrorInner::Command(_) => {
+                    write!(f, "error decoding V2 message command string")
+                }
+                V2NetworkMessageDecoderErrorInner::Payload(_) => {
+                    write!(f, "error decoding V2 message payload")
+                }
+                V2NetworkMessageDecoderErrorInner::UnknownShortId(_) => {
+                    write!(f, "unknown V2 message short ID")
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "std")]
+    impl std::error::Error for V2NetworkMessageDecoderError {
+        fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+            match self.0 {
+                V2NetworkMessageDecoderErrorInner::ShortId => None,
+                V2NetworkMessageDecoderErrorInner::Command(_) => None,
+                V2NetworkMessageDecoderErrorInner::Payload(_) => None,
+                V2NetworkMessageDecoderErrorInner::UnknownShortId(_) => None,
+            }
+        }
+    }
+
     /// An error decoding a [`NetworkHeader`] message.
     ///
     /// [`NetworkHeader`]: super::NetworkHeader
@@ -2592,9 +2919,14 @@ mod test {
             let decoded = encoding::decode_from_slice::<V1NetworkMessage>(&encoded).unwrap();
             assert_eq!(decoded, raw_msg);
 
-            // V2 messages.
+            // V2 messages. legacy encoding
             let v2_msg = V2NetworkMessage::new(msg.clone());
             assert_eq!(deserialize::<V2NetworkMessage>(&serialize(&v2_msg)).unwrap(), v2_msg);
+
+            // V2 messages via new consensus-encoding
+            let v2_encoded = encoding::encode_to_vec(&v2_msg);
+            let v2_decoded = encoding::decode_from_slice::<V2NetworkMessage>(&v2_encoded).unwrap();
+            assert_eq!(v2_decoded, v2_msg);
         }
     }
 
