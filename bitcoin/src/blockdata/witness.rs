@@ -56,6 +56,21 @@ internal_macros::define_extension_trait! {
             witness
         }
 
+        ///Constructs a new witness required to spend a P2WSH output.
+        ///
+        /// The witness will be made up of the satisfaction elements (signatures, preimages, etc.)
+        /// followed by the witness script as the last element. Also useful for spending a
+        /// P2SH-P2WSH output (with the appropriate scriptSig).
+        ///
+        /// The `satisfaction` slice should contain the script satisfaction stack items in the
+        /// order they are pushed onto the stack (e.g., `&[&[][..], &sig1[..], &sig2[..]]` for a
+        /// 2-of-3 multisig).
+        fn p2wsh(satisfaction: &[&[u8]], witness_script: &WitnessScript) -> Self {
+            let mut witness: Witness = satisfaction.iter().collect();
+            witness.push(witness_script.as_bytes());
+            witness
+        }
+
         /// Constructs a new witness required to do a key path spend of a P2TR output.
         fn p2tr_key_spend(signature: &taproot::Signature) -> Self {
             let mut witness = Witness::new();
@@ -424,6 +439,24 @@ mod test {
 
         let tx_bytes_back = serialize(&tx);
         assert_eq!(tx_bytes_back, tx_bytes);
+    }
+
+    #[test]
+    fn p2wsh_witness() {
+        let witness_script_bytes = hex!("522103e5529d8eaa3d559903adb2e881eb06c86ac2574ffa503c45f4e942e2a693b33e2102e5f10fcdcdbab211e0af6a481f5532536ec61a5fdbf7183770cf8680fe729d8152ae");
+        let witness_script = WitnessScript::from_bytes(&witness_script_bytes);
+        let sig1 = hex!("304402201234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef02201234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef01");
+        let sig2 = hex!("3044022011111111111111111111111111111111111111111111111111111111111111110220222222222222222222222222222222222222222222222222222222222222222201");
+
+        // 2-of-2 multisig satisfaction: OP_0 bug push, then two sigs
+        let satisfaction: &[&[u8]] = &[&[], &sig1, &sig2];
+        let witness = Witness::p2wsh(satisfaction, witness_script);
+
+        assert_eq!(witness.len(), 4); // empty push + sig1 + sig2 + witness_script
+        assert_eq!(witness[0], *b"");
+        assert_eq!(witness[1], sig1[..]);
+        assert_eq!(witness[2], sig2[..]);
+        assert_eq!(witness[3], *witness_script.as_bytes());
     }
 
     #[test]
