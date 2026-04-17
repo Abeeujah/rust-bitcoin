@@ -8,8 +8,9 @@ use hex_unstable::hex;
 
 use super::*;
 use crate::consensus::encode::{deserialize, serialize};
-use crate::crypto::key::{LegacyPublicKey, XOnlyPublicKey};
+use crate::crypto::key::{FullPublicKey, LegacyPublicKey, XOnlyPublicKey};
 use crate::script::borrowed::{ScriptPubKeyExt as _, ScriptPubKeyExtPriv as _, TapScriptExt as _};
+use crate::script::owned::ScriptSigBufExt as _;
 use crate::script::witness_program::WitnessProgram;
 use crate::script::witness_version::WitnessVersion;
 use crate::{opcodes, Amount, FeeRate};
@@ -1078,4 +1079,30 @@ fn longest_witness_program() {
     let script = ScriptPubKeyBuf::new_witness_program(&p);
 
     assert_eq!(script.witness_version(), Some(version));
+}
+
+#[test]
+fn p2sh_p2wpkh_script_sig() {
+    let key = "026c468be64d22761c30cd2f12cbc7de255d592d7904b1bab07236897cc4c2e766"
+        .parse::<FullPublicKey>()
+        .unwrap();
+    let script_sig = crate::ScriptSigBuf::p2sh_p2wpkh(key);
+
+    // The scriptSig should be a single push of the 22-byte redeem script: 0014<20-byte-hash>
+    let redeem_script = script_sig.redeem_script().expect("should have redeem script");
+    assert_eq!(redeem_script.as_bytes()[0], 0x00); // witness version 0
+    assert_eq!(redeem_script.as_bytes()[1], 0x14); // push 20 bytes
+    assert_eq!(redeem_script.len(), 22);
+}
+
+#[test]
+fn p2sh_p2wsh_script_sig() {
+    let witness_script = WitnessScriptBuf::from_hex_no_length_prefix("522103e5529d8eaa3d559903adb2e881eb06c86ac2574ffa503c45f4e942e2a693b33e2102e5f10fcdcdbab211e0af6a481f5532536ec61a5fdbf7183770cf8680fe729d8152ae").unwrap();
+    let script_sig = crate::ScriptSigBuf::p2sh_p2wsh(&witness_script).expect("script is valid");
+
+    // The scriptSig should be a single push of the 34-byte redeem script: 0020<32-byte-hash>
+    let redeem_script = script_sig.redeem_script().expect("should have redeem script");
+    assert_eq!(redeem_script.as_bytes()[0], 0x00); // witness version 0
+    assert_eq!(redeem_script.as_bytes()[1], 0x20); // push 32 bytes
+    assert_eq!(redeem_script.len(), 34);
 }

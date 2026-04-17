@@ -71,7 +71,7 @@ pub use self::{
     borrowed::{ScriptExt, TapScriptExt, ScriptPubKeyExt, WitnessScriptExt, ScriptSigExt},
     builder::Builder,
     instruction::{Instruction, Instructions, InstructionIndices},
-    owned::{ScriptBufExt, ScriptPubKeyBufExt},
+    owned::{ScriptBufExt, ScriptPubKeyBufExt, ScriptSigBufExt},
     push_bytes::{PushBytes, PushBytesBuf, PushBytesErrorReport},
 };
 #[doc(no_inline)]
