@@ -156,14 +156,14 @@ mod storage {
     where
         W: fmt::Display + ?Sized,
     {
-        write!(f, "failed to parse '{}' as {}", input, what)
+        write!(f, "failed to parse '{input}' as {what}")
     }
 
     pub(super) fn unknown_variant<W>(inp: &Storage, what: &W, f: &mut fmt::Formatter) -> fmt::Result
     where
         W: fmt::Display + ?Sized,
     {
-        write!(f, "'{}' is not a known {}", inp, what)
+        write!(f, "'{inp}' is not a known {what}")
     }
 
     impl_from!(alloc::string::String, alloc::boxed::Box<str>, alloc::borrow::Cow<'_, str>);

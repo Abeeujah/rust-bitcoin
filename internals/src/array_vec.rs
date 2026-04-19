@@ -174,7 +174,7 @@ impl<T: Copy + fmt::Debug, const CAP: usize> fmt::Debug for ArrayVec<T, CAP> {
 }
 
 impl<T: Copy + core::hash::Hash, const CAP: usize> core::hash::Hash for ArrayVec<T, CAP> {
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) { core::hash::Hash::hash(&**self, state) }
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) { core::hash::Hash::hash(&**self, state); }
 }
 
 #[cfg(test)]

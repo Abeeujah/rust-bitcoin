@@ -44,7 +44,7 @@ mod impls {
             self.try_into_de_error(expected).unwrap_or_else(|_| {
                 let expected = expected.unwrap_or(&"an integer");
 
-                E::custom(format_args!("invalid string, expected {}", expected))
+                E::custom(format_args!("invalid string, expected {expected}"))
             })
         }
 
