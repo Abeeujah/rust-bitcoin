@@ -75,7 +75,7 @@ impl encoding::Encode for PrefilledTransaction {
 type PrefilledTransactionInnerDecoder = Decoder2<CompactSizeDecoder, TransactionDecoder>;
 
 /// The decoder for a [`PrefilledTransaction`] message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct PrefilledTransactionDecoder(PrefilledTransactionInnerDecoder);
 
 impl PrefilledTransactionDecoder {
@@ -212,7 +212,7 @@ impl encoding::Encode for ShortId {
 type ShortIdInnerDecoder = ArrayDecoder<6>;
 
 /// Decoder type for a [`ShortId`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct ShortIdDecoder(ShortIdInnerDecoder);
 
 impl encoding::Decoder for ShortIdDecoder {
@@ -300,7 +300,7 @@ type HeaderAndShortIdsInnerDecoder =
     Decoder4<HeaderDecoder, ArrayDecoder<8>, VecDecoder<ShortId>, VecDecoder<PrefilledTransaction>>;
 
 /// Decoder type for the [`HeaderAndShortIds`] message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct HeaderAndShortIdsDecoder(HeaderAndShortIdsInnerDecoder);
 
 impl HeaderAndShortIdsDecoder {
@@ -445,7 +445,7 @@ impl encoding::Encode for Offset {
     fn encoder(&self) -> Self::Encoder<'_> { CompactSizeEncoder::new(self.0) }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 struct OffsetDecoder(CompactSizeDecoder);
 
 impl encoding::Decoder for OffsetDecoder {
@@ -558,7 +558,7 @@ impl encoding::Encode for BlockTransactionsRequest {
 type BlockTransactionsRequestInnerDecoder = Decoder2<BlockHashDecoder, VecDecoder<Offset>>;
 
 /// The encoder type for a [`BlockTransactionsRequest`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct BlockTransactionsRequestDecoder(BlockTransactionsRequestInnerDecoder);
 
 impl encoding::Decoder for BlockTransactionsRequestDecoder {
@@ -629,7 +629,7 @@ impl encoding::Encode for BlockTransactions {
 type BlockTransactionsInnerDecoder = Decoder2<BlockHashDecoder, VecDecoder<Transaction>>;
 
 /// Decoder type for a [`BlockTransactions`] message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct BlockTransactionsDecoder(BlockTransactionsInnerDecoder);
 
 impl encoding::Decoder for BlockTransactionsDecoder {

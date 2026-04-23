@@ -101,7 +101,7 @@ impl encoding::Encode for Inventory {
 type InventoryInnerDecoder = Decoder2<ArrayDecoder<4>, ArrayDecoder<32>>;
 
 /// The decoder for the [`Inventory`] type.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct InventoryDecoder(InventoryInnerDecoder);
 
 impl encoding::Decoder for InventoryDecoder {
@@ -322,11 +322,11 @@ type GetBlocksOrHeadersInnerDecoder =
     Decoder3<ProtocolVersionDecoder, BlockLocatorDecoder, BlockHashDecoder>;
 
 /// Decoder type for [`GetBlocksMessage`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct GetBlocksMessageDecoder(GetBlocksOrHeadersInnerDecoder);
 
 /// Decoder type for [`GetHeadersMessage`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct GetHeadersMessageDecoder(GetBlocksOrHeadersInnerDecoder);
 
 impl encoding::Decoder for GetHeadersMessageDecoder {

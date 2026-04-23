@@ -466,7 +466,7 @@ impl encoding::Encode for Magic {
 type MagicInnerDecoder = ArrayDecoder<4>;
 
 /// The decoder type for a network [`Magic`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct MagicDecoder(MagicInnerDecoder);
 
 impl encoding::Decoder for MagicDecoder {

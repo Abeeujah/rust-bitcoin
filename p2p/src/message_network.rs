@@ -210,7 +210,7 @@ type VersionMessageInnerDecoder = encoding::Decoder2<
 >;
 
 /// The Decoder for [`VersionMessage`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct VersionMessageDecoder(VersionMessageInnerDecoder);
 
 /// A bitcoin user agent defined by BIP-0014. The user agent is sent in the version message when a
@@ -243,7 +243,7 @@ impl encoding::Encode for UserAgent {
 type UserAgentInnerDecoder = ByteVecDecoder;
 
 /// The decoder for the [`UserAgent`] message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct UserAgentDecoder(UserAgentInnerDecoder);
 
 impl encoding::Decoder for UserAgentDecoder {
@@ -452,7 +452,7 @@ impl encoding::Encode for RejectReason {
 }
 
 /// The decoder type for a [`RejectReason`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct RejectReasonDecoder(ArrayDecoder<1>);
 
 impl encoding::Decoder for RejectReasonDecoder {
@@ -540,7 +540,7 @@ type RejectInnerDecoder =
     Decoder4<ByteVecDecoder, RejectReasonDecoder, ByteVecDecoder, ArrayDecoder<32>>;
 
 /// The decoder type for a [`Reject`] message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct RejectDecoder(RejectInnerDecoder);
 
 impl encoding::Decoder for RejectDecoder {
@@ -625,7 +625,7 @@ impl encoding::Encode for Alert {
 type AlertInnerDecoder = ByteVecDecoder;
 
 /// The decoder for the [`Alert`] message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AlertDecoder(AlertInnerDecoder);
 
 impl encoding::Decoder for AlertDecoder {

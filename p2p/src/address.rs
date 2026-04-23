@@ -159,7 +159,7 @@ type AddressInnerDecoder = encoding::Decoder3<
 >;
 
 /// The Decoder for [`Address`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AddressDecoder(AddressInnerDecoder);
 
 impl encoding::Decoder for AddressDecoder {
@@ -222,7 +222,7 @@ impl encoding::Encode for AddrV1Message {
 type AddrV1MessageInnerDecoder = Decoder2<ArrayDecoder<4>, AddressDecoder>;
 
 /// The decoder for an [`AddrV1Message`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AddrV1MessageDecoder(AddrV1MessageInnerDecoder);
 
 impl encoding::Decoder for AddrV1MessageDecoder {
@@ -494,7 +494,7 @@ impl encoding::Encode for AddrV2 {
 type AddrV2InnerDecoder = Decoder2<ArrayDecoder<1>, ByteVecDecoder>;
 
 /// The decoder type for an [`AddrV2`] type.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AddrV2Decoder(AddrV2InnerDecoder);
 
 impl AddrV2Decoder {
@@ -659,7 +659,7 @@ type AddrV2MessageInnerDecoder =
     Decoder4<ArrayDecoder<4>, CompactSizeU64Decoder, AddrV2Decoder, ArrayDecoder<2>>;
 
 /// The decoder for an [`AddrV2Message`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AddrV2MessageDecoder(AddrV2MessageInnerDecoder);
 
 impl encoding::Decoder for AddrV2MessageDecoder {
