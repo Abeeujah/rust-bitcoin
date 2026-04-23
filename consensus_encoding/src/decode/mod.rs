@@ -36,7 +36,6 @@ use crate::{DecodeError, UnconsumedError};
 ///
 /// impl Decode for Foo {
 ///     type Decoder = FooDecoder;
-///     fn decoder() -> Self::Decoder { FooDecoder(ArrayDecoder::new()) }
 /// }
 ///
 /// let foo: Foo = decode_from_slice(&[0xde, 0xad, 0xbe, 0xef]).unwrap();

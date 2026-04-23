@@ -139,25 +139,6 @@ impl encoding::Encode for VersionMessage {
 
 impl encoding::Decode for VersionMessage {
     type Decoder = VersionMessageDecoder;
-
-    #[inline]
-    fn decoder() -> Self::Decoder {
-        VersionMessageDecoder(encoding::Decoder2::new(
-            encoding::Decoder3::new(
-                crate::ProtocolVersion::decoder(),
-                crate::ServiceFlags::decoder(),
-                encoding::ArrayDecoder::<8>::new(),
-            ),
-            encoding::Decoder6::new(
-                crate::address::Address::decoder(),
-                crate::address::Address::decoder(),
-                encoding::ArrayDecoder::<8>::new(),
-                UserAgent::decoder(),
-                encoding::ArrayDecoder::<4>::new(),
-                encoding::ArrayDecoder::<1>::new(),
-            ),
-        ))
-    }
 }
 
 impl encoding::Decoder for VersionMessageDecoder {

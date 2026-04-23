@@ -218,9 +218,6 @@ impl encoding::Encode for BlockHeight {
 #[cfg(feature = "encoding")]
 impl encoding::Decode for BlockHeight {
     type Decoder = BlockHeightDecoder;
-
-    #[inline]
-    fn decoder() -> Self::Decoder { BlockHeightDecoder(encoding::ArrayDecoder::<4>::new()) }
 }
 
 #[cfg(feature = "encoding")]

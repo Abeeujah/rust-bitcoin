@@ -168,9 +168,6 @@ impl encoding::Decoder for MerkleBlockDecoder {
 
 impl encoding::Decode for MerkleBlock {
     type Decoder = MerkleBlockDecoder;
-    fn decoder() -> Self::Decoder {
-        MerkleBlockDecoder(Decoder2::new(block::Header::decoder(), PartialMerkleTree::decoder()))
-    }
 }
 
 /// Data structure that represents a partial Merkle tree.
@@ -547,14 +544,6 @@ impl encoding::Decoder for PartialMerkleTreeDecoder {
 
 impl encoding::Decode for PartialMerkleTree {
     type Decoder = PartialMerkleTreeDecoder;
-
-    fn decoder() -> Self::Decoder {
-        PartialMerkleTreeDecoder(Decoder3::new(
-            ArrayDecoder::new(),
-            VecDecoder::new(),
-            ByteVecDecoder::new(),
-        ))
-    }
 }
 
 /// Error types for merkle tree messages.

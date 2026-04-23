@@ -102,8 +102,6 @@ impl encoding::Decoder for FilterHashDecoder {
 
 impl encoding::Decode for FilterHash {
     type Decoder = FilterHashDecoder;
-
-    fn decoder() -> Self::Decoder { FilterHashDecoder(ArrayDecoder::new()) }
 }
 
 /// Decoder for the [`FilterHeader`] type.
@@ -131,8 +129,6 @@ impl encoding::Decoder for FilterHeaderDecoder {
 
 impl encoding::Decode for FilterHeader {
     type Decoder = FilterHeaderDecoder;
-
-    fn decoder() -> Self::Decoder { FilterHeaderDecoder(ArrayDecoder::new()) }
 }
 
 #[cfg(feature = "arbitrary")]
@@ -205,14 +201,6 @@ impl encoding::Decoder for GetCFiltersDecoder {
 
 impl encoding::Decode for GetCFilters {
     type Decoder = GetCFiltersDecoder;
-
-    fn decoder() -> Self::Decoder {
-        GetCFiltersDecoder(Decoder3::new(
-            ArrayDecoder::new(),
-            BlockHeightDecoder::new(),
-            BlockHashDecoder::new(),
-        ))
-    }
 }
 
 /// cfilter message
@@ -283,14 +271,6 @@ impl encoding::Decoder for CFilterDecoder {
 
 impl encoding::Decode for CFilter {
     type Decoder = CFilterDecoder;
-
-    fn decoder() -> Self::Decoder {
-        CFilterDecoder(Decoder3::new(
-            ArrayDecoder::new(),
-            BlockHashDecoder::new(),
-            ByteVecDecoder::new(),
-        ))
-    }
 }
 
 /// getcfheaders message
@@ -349,14 +329,6 @@ impl encoding::Decoder for GetCFHeadersDecoder {
 
 impl encoding::Decode for GetCFHeaders {
     type Decoder = GetCFHeadersDecoder;
-
-    fn decoder() -> Self::Decoder {
-        GetCFHeadersDecoder(Decoder3::new(
-            ArrayDecoder::new(),
-            BlockHeightDecoder::new(),
-            BlockHashDecoder::new(),
-        ))
-    }
 }
 
 /// cfheaders message
@@ -435,15 +407,6 @@ impl encoding::Decoder for CFHeadersDecoder {
 
 impl encoding::Decode for CFHeaders {
     type Decoder = CFHeadersDecoder;
-
-    fn decoder() -> Self::Decoder {
-        CFHeadersDecoder(Decoder4::new(
-            ArrayDecoder::new(),
-            BlockHashDecoder::new(),
-            FilterHeader::decoder(),
-            VecDecoder::new(),
-        ))
-    }
 }
 
 /// getcfcheckpt message
@@ -499,10 +462,6 @@ impl encoding::Decoder for GetCFCheckptDecoder {
 
 impl encoding::Decode for GetCFCheckpt {
     type Decoder = GetCFCheckptDecoder;
-
-    fn decoder() -> Self::Decoder {
-        GetCFCheckptDecoder(Decoder2::new(ArrayDecoder::new(), BlockHashDecoder::new()))
-    }
 }
 
 /// cfcheckpt message
@@ -573,14 +532,6 @@ impl encoding::Decoder for CFCheckptDecoder {
 
 impl encoding::Decode for CFCheckpt {
     type Decoder = CFCheckptDecoder;
-
-    fn decoder() -> Self::Decoder {
-        CFCheckptDecoder(Decoder3::new(
-            ArrayDecoder::new(),
-            BlockHashDecoder::new(),
-            VecDecoder::new(),
-        ))
-    }
 }
 
 /// Error types for client side block filtering messages.

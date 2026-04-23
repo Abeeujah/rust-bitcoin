@@ -62,8 +62,6 @@ impl encoding::Encode for WitnessMerkleNode {
 
 impl encoding::Decode for WitnessMerkleNode {
     type Decoder = WitnessMerkleNodeDecoder;
-    #[inline]
-    fn decoder() -> Self::Decoder { WitnessMerkleNodeDecoder(encoding::ArrayDecoder::<32>::new()) }
 }
 
 encoding::encoder_newtype_exact! {

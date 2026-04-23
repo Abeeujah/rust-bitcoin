@@ -184,13 +184,6 @@ impl encoding::Decoder for AddressDecoder {
 
 impl encoding::Decode for Address {
     type Decoder = AddressDecoder;
-    fn decoder() -> Self::Decoder {
-        AddressDecoder(encoding::Decoder3::new(
-            ServiceFlags::decoder(),
-            encoding::ArrayDecoder::<16>::new(),
-            encoding::ArrayDecoder::<2>::new(),
-        ))
-    }
 }
 
 /// Data type received in an `addr` message.
@@ -247,13 +240,6 @@ impl encoding::Decoder for AddrV1MessageDecoder {
 
 impl encoding::Decode for AddrV1Message {
     type Decoder = AddrV1MessageDecoder;
-
-    fn decoder() -> Self::Decoder {
-        AddrV1MessageDecoder(AddrV1MessageInnerDecoder::new(
-            ArrayDecoder::new(),
-            Address::decoder(),
-        ))
-    }
 }
 
 /// Supported networks for use in BIP-0155 addrv2 message
@@ -589,10 +575,6 @@ impl encoding::Decoder for AddrV2Decoder {
 
 impl encoding::Decode for AddrV2 {
     type Decoder = AddrV2Decoder;
-
-    fn decoder() -> Self::Decoder {
-        AddrV2Decoder(Decoder2::new(ArrayDecoder::new(), ByteVecDecoder::new()))
-    }
 }
 
 /// Address received from BIP-0155 addrv2 message
@@ -686,15 +668,6 @@ impl encoding::Decoder for AddrV2MessageDecoder {
 
 impl encoding::Decode for AddrV2Message {
     type Decoder = AddrV2MessageDecoder;
-
-    fn decoder() -> Self::Decoder {
-        AddrV2MessageDecoder(AddrV2MessageInnerDecoder::new(
-            ArrayDecoder::new(),
-            CompactSizeU64Decoder::new(),
-            AddrV2::decoder(),
-            ArrayDecoder::new(),
-        ))
-    }
 }
 
 /// Error types for address messages.

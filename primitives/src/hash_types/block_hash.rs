@@ -42,8 +42,6 @@ impl encoding::Encode for BlockHash {
 
 impl encoding::Decode for BlockHash {
     type Decoder = BlockHashDecoder;
-    #[inline]
-    fn decoder() -> Self::Decoder { BlockHashDecoder(encoding::ArrayDecoder::<32>::new()) }
 }
 
 encoding::encoder_newtype_exact! {

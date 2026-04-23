@@ -65,10 +65,6 @@ impl encoding::Decoder for SendCmpctDecoder {
 
 impl encoding::Decode for SendCmpct {
     type Decoder = SendCmpctDecoder;
-
-    fn decoder() -> Self::Decoder {
-        SendCmpctDecoder(Decoder2::new(ArrayDecoder::new(), ArrayDecoder::new()))
-    }
 }
 
 /// Error types for [`SendCmpct`] messages.

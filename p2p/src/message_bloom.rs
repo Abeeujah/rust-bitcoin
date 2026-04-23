@@ -96,15 +96,6 @@ impl encoding::Decoder for FilterLoadDecoder {
 
 impl encoding::Decode for FilterLoad {
     type Decoder = FilterLoadDecoder;
-
-    fn decoder() -> Self::Decoder {
-        FilterLoadDecoder(Decoder4::new(
-            ByteVecDecoder::new(),
-            ArrayDecoder::new(),
-            ArrayDecoder::new(),
-            BloomFlags::decoder(),
-        ))
-    }
 }
 
 /// Bloom filter update flags
@@ -177,8 +168,6 @@ impl encoding::Decoder for BloomFlagsDecoder {
 
 impl encoding::Decode for BloomFlags {
     type Decoder = BloomFlagsDecoder;
-
-    fn decoder() -> Self::Decoder { BloomFlagsDecoder(ArrayDecoder::new()) }
 }
 
 /// `filteradd` message updates the current filter with new data
@@ -232,8 +221,6 @@ impl encoding::Decoder for FilterAddDecoder {
 
 impl encoding::Decode for FilterAdd {
     type Decoder = FilterAddDecoder;
-
-    fn decoder() -> Self::Decoder { FilterAddDecoder(FilterAddInnerDecoder::new()) }
 }
 
 /// Error types for bloom filter messages.
