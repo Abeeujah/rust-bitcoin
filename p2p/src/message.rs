@@ -1328,9 +1328,7 @@ enum DecoderState {
 }
 
 impl Default for DecoderState {
-    fn default() -> Self {
-        Self::ReadingHeader { header_decoder: Default::default() }
-    }
+    fn default() -> Self { Self::ReadingHeader { header_decoder: encoding::Decoder4::default() } }
 }
 
 /// Decoder for [`V1NetworkMessage`].
@@ -1683,9 +1681,7 @@ enum V2NetworkMessageDecoderState {
 }
 
 impl Default for V2NetworkMessageDecoderState {
-    fn default() -> Self {
-        Self::ShortId(Default::default())
-    }
+    fn default() -> Self { Self::ShortId(<encoding::ArrayDecoder<1>>::default()) }
 }
 
 /// Decoder for [`V2NetworkMessage`].
@@ -2502,7 +2498,10 @@ mod test {
 
         // Test serializing.
         let cs = CommandString("Andrew".into());
-        assert_eq!(encoding::encode_to_vec(&cs), [0x41u8, 0x6e, 0x64, 0x72, 0x65, 0x77, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            encoding::encode_to_vec(&cs),
+            [0x41u8, 0x6e, 0x64, 0x72, 0x65, 0x77, 0, 0, 0, 0, 0, 0]
+        );
 
         // Test deserializing
         let cs: Result<CommandString, _> =

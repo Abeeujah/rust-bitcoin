@@ -51,12 +51,6 @@ struct CompositeDataDecoder {
     inner: Decoder2<ArrayDecoder<4>, ArrayDecoder<2>>,
 }
 
-impl CompositeDataDecoder {
-    fn new() -> Self {
-        Self { inner: Decoder2::new(ArrayDecoder::<4>::new(), ArrayDecoder::<2>::new()) }
-    }
-}
-
 impl Decoder for CompositeDataDecoder {
     type Output = CompositeData;
     type Error = CompositeError;
