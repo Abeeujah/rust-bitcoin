@@ -1369,12 +1369,7 @@ impl encoding::Decoder for NetworkMessageDecoder {
 #[derive(Debug, Clone)]
 enum DecoderState {
     ReadingHeader {
-        header_decoder: encoding::Decoder4<
-            encoding::ArrayDecoder<4>,
-            CommandStringDecoder,
-            encoding::ArrayDecoder<4>,
-            encoding::ArrayDecoder<4>,
-        >,
+        header_decoder: V1MessageHeaderDecoder,
     },
     ReadingPayload {
         magic: Magic,
@@ -1385,7 +1380,7 @@ enum DecoderState {
 }
 
 impl Default for DecoderState {
-    fn default() -> Self { Self::ReadingHeader { header_decoder: encoding::Decoder4::default() } }
+    fn default() -> Self { Self::ReadingHeader { header_decoder: V1MessageHeaderDecoder::default() } }
 }
 
 /// Decoder for [`V1NetworkMessage`].
@@ -1414,12 +1409,7 @@ impl encoding::Decoder for V1NetworkMessageDecoder {
                     let old_state = core::mem::replace(
                         &mut self.state,
                         DecoderState::ReadingHeader {
-                            header_decoder: encoding::Decoder4::new(
-                                encoding::ArrayDecoder::new(),
-                                CommandStringDecoder { inner: encoding::ArrayDecoder::new() },
-                                encoding::ArrayDecoder::new(),
-                                encoding::ArrayDecoder::new(),
-                            ),
+                            header_decoder: <V1MessageHeader as encoding::Decode>::decoder(),
                         },
                     );
 
@@ -1427,24 +1417,22 @@ impl encoding::Decoder for V1NetworkMessageDecoder {
                         unreachable!("we are in ReadingHeader state")
                     };
 
-                    let (magic_bytes, command, payload_len_bytes, checksum) =
-                        header_decoder.end().map_err(|_| {
-                            V1NetworkMessageDecoderError(V1NetworkMessageDecoderErrorInner::Header)
-                        })?;
-
-                    let length = u32::from_le_bytes(payload_len_bytes);
-                    let payload_len = length as usize;
+                    let header = header_decoder.end().map_err(|_| {
+                        V1NetworkMessageDecoderError(V1NetworkMessageDecoderErrorInner::Header)
+                    })?;
+                    let payload_len = usize::try_from(header.length)
+                        .expect("u32 -> usize cast ok for >= 32-bit platforms");
                     if payload_len > MAX_MSG_SIZE {
                         return Err(V1NetworkMessageDecoderError(
                             V1NetworkMessageDecoderErrorInner::PayloadTooLarge,
                         ));
                     }
 
-                    let payload_decoder = NetworkMessageDecoder::new(command, payload_len);
+                    let payload_decoder = NetworkMessageDecoder::new(header.command, payload_len);
                     self.state = DecoderState::ReadingPayload {
-                        magic: Magic::from_bytes(magic_bytes),
-                        length,
-                        checksum,
+                        magic: header.magic,
+                        length: header.length,
+                        checksum: header.checksum,
                         payload_decoder,
                     };
 
