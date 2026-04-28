@@ -1400,8 +1400,8 @@ impl encoding::Decoder for V1NetworkMessageDecoder {
     fn push_bytes(&mut self, bytes: &mut &[u8]) -> Result<bool, Self::Error> {
         match &mut self.state {
             DecoderState::ReadingHeader { header_decoder } => {
-                let need_more = header_decoder.push_bytes(bytes).map_err(|_| {
-                    V1NetworkMessageDecoderError(V1NetworkMessageDecoderErrorInner::Header)
+                let need_more = header_decoder.push_bytes(bytes).map_err(|e| {
+                    V1NetworkMessageDecoderError(V1NetworkMessageDecoderErrorInner::Header(e))
                 })?;
 
                 if !need_more {
@@ -1417,8 +1417,8 @@ impl encoding::Decoder for V1NetworkMessageDecoder {
                         unreachable!("we are in ReadingHeader state")
                     };
 
-                    let header = header_decoder.end().map_err(|_| {
-                        V1NetworkMessageDecoderError(V1NetworkMessageDecoderErrorInner::Header)
+                    let header = header_decoder.end().map_err(|e| {
+                        V1NetworkMessageDecoderError(V1NetworkMessageDecoderErrorInner::Header(e))
                     })?;
                     let payload_len = usize::try_from(header.length)
                         .expect("u32 -> usize cast ok for >= 32-bit platforms");
@@ -1449,8 +1449,11 @@ impl encoding::Decoder for V1NetworkMessageDecoder {
 
     fn end(self) -> Result<Self::Output, Self::Error> {
         match self.state {
-            DecoderState::ReadingHeader { .. } =>
-                Err(V1NetworkMessageDecoderError(V1NetworkMessageDecoderErrorInner::Header)),
+            DecoderState::ReadingHeader { header_decoder } => Err(header_decoder
+                .end()
+                .map_err(V1NetworkMessageDecoderErrorInner::Header)
+                .map_err(V1NetworkMessageDecoderError)
+                .expect_err("push_bytes() moves to ReadingPayload on header_decoder completion")),
             DecoderState::ReadingPayload { magic, length, checksum, payload_decoder, .. } => {
                 let payload = payload_decoder.end()?;
                 let (_, expected_checksum) = sha2_checksum(&payload);
@@ -1985,6 +1988,11 @@ pub mod error {
         }
     }
 
+    #[cfg(feature = "std")]
+    impl std::error::Error for V1MessageHeaderDecoderError {
+        fn source(&self) -> Option<&(dyn std::error::Error + 'static)> { Some(&self.0) }
+    }
+
     /// An error decoding a [`InventoryPayload`].
     ///
     /// [`InventoryPayload`]: super::InventoryPayload
@@ -2103,7 +2111,7 @@ pub mod error {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub(super) enum V1NetworkMessageDecoderErrorInner {
         /// Error decoding the message header.
-        Header,
+        Header(V1MessageHeaderDecoderError),
         /// Payload length exceeds maximum allowed message size.
         PayloadTooLarge,
         /// Error decoding the message payload.
@@ -2117,8 +2125,8 @@ pub mod error {
     impl fmt::Display for V1NetworkMessageDecoderError {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self.0 {
-                V1NetworkMessageDecoderErrorInner::Header => {
-                    write!(f, "error decoding message header")
+                V1NetworkMessageDecoderErrorInner::Header(ref e) => {
+                    write_err!(f, "error decoding message header"; e)
                 }
                 V1NetworkMessageDecoderErrorInner::PayloadTooLarge => {
                     write!(f, "payload length exceeds maximum allowed message size")
@@ -2141,7 +2149,7 @@ pub mod error {
     impl std::error::Error for V1NetworkMessageDecoderError {
         fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
             match self.0 {
-                V1NetworkMessageDecoderErrorInner::Header => None,
+                V1NetworkMessageDecoderErrorInner::Header(ref e) => Some(e),
                 V1NetworkMessageDecoderErrorInner::PayloadTooLarge => None,
                 V1NetworkMessageDecoderErrorInner::Payload => None,
                 V1NetworkMessageDecoderErrorInner::InvalidChecksum { expected: _, actual: _ } =>
