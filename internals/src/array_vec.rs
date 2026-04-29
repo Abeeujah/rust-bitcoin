@@ -178,6 +178,76 @@ impl<T: Copy + core::hash::Hash, const CAP: usize> core::hash::Hash for ArrayVec
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) { core::hash::Hash::hash(&**self, state); }
 }
 
+#[cfg(feature = "serde")]
+impl<T: Copy + crate::serde::Serialize, const CAP: usize> crate::serde::Serialize
+    for ArrayVec<T, CAP>
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: crate::serde::Serializer,
+    {
+        use crate::serde::ser::SerializeSeq;
+
+        let mut seq = serializer.serialize_seq(Some(self.len()))?;
+        for elem in self.as_slice() {
+            seq.serialize_element(elem)?;
+        }
+        seq.end()
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, T, const CAP: usize> crate::serde::Deserialize<'de> for ArrayVec<T, CAP>
+where
+    T: Copy + crate::serde::Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use core::marker::PhantomData;
+
+        use crate::serde::de;
+
+        struct Visitor<T, const CAP: usize>(PhantomData<T>);
+
+        impl<'de, T, const CAP: usize> de::Visitor<'de> for Visitor<T, CAP>
+        where
+            T: Copy + crate::serde::Deserialize<'de>,
+        {
+            type Value = ArrayVec<T, CAP>;
+
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "a sequence of at most {} elements", CAP)
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                use de::Error;
+
+                if let Some(hint) = seq.size_hint() {
+                    if hint > CAP {
+                        return Err(Error::invalid_length(hint, &self));
+                    }
+                }
+
+                let mut out = ArrayVec::<T, CAP>::new();
+                while let Some(elem) = seq.next_element::<T>()? {
+                    // The `push()` call below panics if array is full but we want to error.
+                    if out.len() >= CAP {
+                        return Err(Error::invalid_length(out.len() + 1, &self));
+                    }
+                    out.push(elem);
+                }
+                Ok(out)
+            }
+        }
+        deserializer.deserialize_seq(Visitor::<T, CAP>(PhantomData))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::ArrayVec;
@@ -209,6 +279,101 @@ mod tests {
     fn extend_from_slice() {
         let mut av = ArrayVec::<u8, 8>::new();
         av.extend_from_slice(b"abc");
+    }
+
+    #[cfg(feature = "test-serde")]
+    #[test]
+    fn serde_round_trip_u8() {
+        let mut want = ArrayVec::<u8, 8>::new();
+        want.extend_from_slice(b"abc");
+
+        let json = crate::serde_json::to_string(&want).expect("serde_json failed to encode");
+        let got: ArrayVec<u8, 8> =
+            crate::serde_json::from_str(&json).expect("serde_json failed to decode");
+        assert_eq!(got, want);
+
+        let bin = crate::bincode::serialize(&want).expect("bincode failed to encode");
+        let got: ArrayVec<u8, 8> =
+            crate::bincode::deserialize(&bin).expect("bincode failed to decode");
+        assert_eq!(got, want);
+    }
+
+    #[cfg(feature = "test-serde")]
+    #[test]
+    fn serde_round_trip_u32() {
+        let mut want = ArrayVec::<u32, 4>::new();
+        (1..=3).for_each(|i| want.push(i));
+
+        let json = crate::serde_json::to_string(&want).expect("serde_json failed to encode");
+        let got: ArrayVec<u32, 4> =
+            crate::serde_json::from_str(&json).expect("serde_json failed to decode");
+        assert_eq!(got, want);
+
+        let bin = crate::bincode::serialize(&want).expect("bincode failed to encode");
+        let got: ArrayVec<u32, 4> =
+            crate::bincode::deserialize(&bin).expect("bincode failed to decode");
+        assert_eq!(got, want);
+    }
+
+    #[cfg(feature = "test-serde")]
+    #[test]
+    fn serde_round_trip_empty() {
+        let want = ArrayVec::<u8, 0>::new();
+
+        let json = crate::serde_json::to_string(&want).expect("serde_json failed to encode");
+        assert_eq!(json, "[]");
+        let got: ArrayVec<u8, 0> =
+            crate::serde_json::from_str(&json).expect("serde_json failed to decode");
+        assert_eq!(got, want);
+    }
+
+    #[cfg(feature = "test-serde")]
+    #[test]
+    fn serde_deserialize_overflow_json_returns_error() {
+        // CAP=2 but JSON contains 3 elements -> must error, not panic.
+        // Excercises the read-until-overflow path (no usable size_hint).
+        let json = "[1,2,3]";
+        let res: Result<ArrayVec<u8, 2>, _> = crate::serde_json::from_str(json);
+        assert!(res.is_err(), "expected an error for over-capacity input");
+    }
+
+    #[cfg(feature = "test-serde")]
+    #[test]
+    fn serde_deserialize_overflow_bincode_returns_error() {
+        // Exercises the size_hint > CAP fast-reject path; bincode prefixes the
+        // sequence with a length, which becomes the sze_hint on deserialize.
+        let slice: &[u8] = &[1, 2, 3];
+        let bin = crate::bincode::serialize(slice).expect("bincode failed to encode");
+        let res: Result<ArrayVec<u8, 2>, _> = crate::bincode::deserialize(&bin);
+        assert!(res.is_err(), "expected an error for over-capacity input");
+    }
+
+    #[cfg(feature = "test-serde")]
+    #[test]
+    fn serde_matches_vec_wire_format() {
+        // Verifies the on-the-wire encoding is identical to `Vec<T>`/`&[T]` so
+        // that an `ArrayVec<T, CAP>` is interchangeable with `Vec<T>` in serde.
+        let slice: &[u8] = &[1, 2, 3];
+        let want = ArrayVec::<u8, 8>::from_slice(slice);
+
+        // JSON
+        let av_json = crate::serde_json::to_string(&want).expect("serde_json failed to encode");
+        let slice_json = crate::serde_json::to_string(slice).expect("serde_json failed to encode");
+        assert_eq!(av_json, slice_json);
+
+        // Bincode.
+        let av_bin = crate::bincode::serialize(&want).expect("bincode failed to encode");
+        let slice_bin = crate::bincode::serialize(slice).expect("bincode failed to encode");
+        assert_eq!(av_bin, slice_bin);
+
+        // Deserialize the slice-encoded bytes into ArrayVec.
+        let got: ArrayVec<u8, 8> =
+            crate::serde_json::from_str(&slice_json).expect("serde_json failed to decode");
+        assert_eq!(got, want);
+
+        let got: ArrayVec<u8, 8> =
+            crate::bincode::deserialize(&slice_bin).expect("bincode failed to decode");
+        assert_eq!(got, want);
     }
 }
 
