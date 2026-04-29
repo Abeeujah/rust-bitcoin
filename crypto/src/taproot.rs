@@ -40,6 +40,12 @@ pub struct Signature {
 
 impl Signature {
     /// Deserializes the signature from a slice.
+    ///
+    /// # Errors
+    ///
+    /// - [`SigFromSliceError::InvalidSignatureSize`] if the input slice is not 64 or 65 bytes.
+    /// - [`SigFromSliceError::SighashType`] if the sighash type is invalid or the sighash type
+    ///   is default and the slice is 65 bytes.
     pub fn from_slice(sl: &[u8]) -> Result<Self, SigFromSliceError> {
         if let Ok(signature) = <[u8; 64]>::try_from(sl) {
             // default type
@@ -123,7 +129,7 @@ pub struct SerializedSignature {
 }
 
 impl SerializedSignature {
-    /// Constructs a new SerializedSignature from a Signature.
+    /// Constructs a new `SerializedSignature` from a Signature.
     ///
     /// In other words this serializes a `Signature` into a `SerializedSignature`.
     #[inline]
@@ -132,6 +138,10 @@ impl SerializedSignature {
     /// Converts the serialized signature into the [`Signature`] struct.
     ///
     /// In other words this deserializes the `SerializedSignature`.
+    ///
+    /// # Errors
+    ///
+    /// See [`Signature::from_slice`].
     #[inline]
     pub fn to_signature(self) -> Result<Signature, SigFromSliceError> {
         Signature::from_slice(&self)
