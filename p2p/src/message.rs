@@ -1377,8 +1377,8 @@ enum DecoderState {
         >,
     },
     ReadingPayload {
-        magic_bytes: [u8; 4],
-        payload_len_bytes: [u8; 4],
+        magic: Magic,
+        length: u32,
         checksum: [u8; 4],
         payload_decoder: NetworkMessageDecoder,
     },
@@ -1432,7 +1432,8 @@ impl encoding::Decoder for V1NetworkMessageDecoder {
                             V1NetworkMessageDecoderError(V1NetworkMessageDecoderErrorInner::Header)
                         })?;
 
-                    let payload_len = u32::from_le_bytes(payload_len_bytes) as usize;
+                    let length = u32::from_le_bytes(payload_len_bytes);
+                    let payload_len = length as usize;
                     if payload_len > MAX_MSG_SIZE {
                         return Err(V1NetworkMessageDecoderError(
                             V1NetworkMessageDecoderErrorInner::PayloadTooLarge,
@@ -1441,8 +1442,8 @@ impl encoding::Decoder for V1NetworkMessageDecoder {
 
                     let payload_decoder = NetworkMessageDecoder::new(command, payload_len);
                     self.state = DecoderState::ReadingPayload {
-                        magic_bytes,
-                        payload_len_bytes,
+                        magic: Magic::from_bytes(magic_bytes),
+                        length,
                         checksum,
                         payload_decoder,
                     };
@@ -1462,13 +1463,7 @@ impl encoding::Decoder for V1NetworkMessageDecoder {
         match self.state {
             DecoderState::ReadingHeader { .. } =>
                 Err(V1NetworkMessageDecoderError(V1NetworkMessageDecoderErrorInner::Header)),
-            DecoderState::ReadingPayload {
-                magic_bytes,
-                payload_len_bytes,
-                checksum,
-                payload_decoder,
-                ..
-            } => {
+            DecoderState::ReadingPayload { magic, length, checksum, payload_decoder, .. } => {
                 let payload = payload_decoder.end()?;
                 let (_, expected_checksum) = sha2_checksum(&payload);
                 if checksum != expected_checksum {
@@ -1480,12 +1475,7 @@ impl encoding::Decoder for V1NetworkMessageDecoder {
                     ));
                 }
 
-                Ok(V1NetworkMessage {
-                    magic: Magic::from_bytes(magic_bytes),
-                    payload,
-                    payload_len: u32::from_le_bytes(payload_len_bytes),
-                    checksum,
-                })
+                Ok(V1NetworkMessage { magic, payload, payload_len: length, checksum })
             }
         }
     }
