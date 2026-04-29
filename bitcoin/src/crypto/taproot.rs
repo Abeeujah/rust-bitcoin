@@ -14,7 +14,6 @@ use core::str::FromStr;
 use arbitrary::{Arbitrary, Unstructured};
 use internals::array::ArrayExt;
 use internals::{impl_to_hex_from_lower_hex, write_err};
-use io::Write;
 
 pub use self::into_iter::IntoIter;
 use crate::hex;
@@ -84,13 +83,6 @@ impl Signature {
         }
         ser_sig
     }
-
-    /// Serializes the signature to `writer`.
-    #[inline]
-    pub fn serialize_to_writer<W: Write + ?Sized>(&self, writer: &mut W) -> Result<(), io::Error> {
-        let sig = self.serialize();
-        sig.write_to(writer)
-    }
 }
 
 impl fmt::Display for Signature {
@@ -148,12 +140,6 @@ impl SerializedSignature {
     /// Returns an iterator over bytes of the signature.
     #[inline]
     pub fn iter(&self) -> core::slice::Iter<'_, u8> { self.into_iter() }
-
-    /// Writes this serialized signature to a `writer`.
-    #[inline]
-    pub fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> Result<(), io::Error> {
-        writer.write_all(self)
-    }
 
     /// Constructs new `SerializedSignature` from data and length.
     ///
