@@ -4,6 +4,7 @@
 //!
 //! This module provides Taproot signatures used by Bitcoin that can be roundtrip (de)serialized.
 
+use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::convert::Infallible;
 use core::fmt;
@@ -12,12 +13,14 @@ use core::str::FromStr;
 
 #[cfg(feature = "arbitrary")]
 use arbitrary::{Arbitrary, Unstructured};
+use hex_unstable::DisplayHex as _;
 use internals::array::ArrayExt;
 use internals::{impl_to_hex_from_lower_hex, write_err};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 pub use self::into_iter::IntoIter;
 use crate::hex;
-use crate::prelude::{DisplayHex, Vec};
 use crate::sighash::{InvalidSighashTypeError, TapSighashType};
 
 const MAX_LEN: usize = 65; // 64 for sig, 1B sighash flag
@@ -89,9 +92,9 @@ impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.sighash_type == TapSighashType::Default {
             // default sighash type, don't add extra sighash byte
-            hex_unstable::fmt_hex_exact!(f, 64, self.serialize(), hex_unstable::Case::Lower)
+            hex_unstable::fmt_hex_exact!(f, 64, (*self).serialize(), hex_unstable::Case::Lower)
         } else {
-            hex_unstable::fmt_hex_exact!(f, 65, self.serialize(), hex_unstable::Case::Lower)
+            hex_unstable::fmt_hex_exact!(f, 65, (*self).serialize(), hex_unstable::Case::Lower)
         }
     }
 }

@@ -29,6 +29,8 @@ pub mod ecdsa;
 pub mod key;
 #[cfg(feature = "alloc")]
 pub mod sighash;
+#[cfg(feature = "alloc")]
+pub mod taproot;
 
 #[doc(inline)]
 #[cfg(feature = "alloc")]
