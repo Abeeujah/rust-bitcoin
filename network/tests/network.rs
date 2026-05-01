@@ -1,6 +1,6 @@
 //! Tests what a user can do when pattern matching on `Network` and associated types.
 
-use bitcoin::network::{Network, NetworkKind, TestnetVersion};
+use bitcoin_network_kind::{Network, NetworkKind, TestnetVersion};
 
 #[test]
 fn can_match_exhaustively_on_network() {
