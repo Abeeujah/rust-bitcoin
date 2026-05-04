@@ -429,6 +429,22 @@ impl From<secp256k1::PublicKey> for XOnlyPublicKey {
     }
 }
 
+impl From<LegacyPublicKey> for XOnlyPublicKey {
+    fn from(pk: LegacyPublicKey) -> Self {
+        let (xonly, parity) = pk.to_inner().x_only_public_key();
+        Self::from_secp(xonly, parity)
+    }
+}
+
+impl From<FullPublicKey> for XOnlyPublicKey {
+    fn from(pk: FullPublicKey) -> Self { pk.to_inner().into() }
+}
+
+impl From<TweakedPublicKey> for XOnlyPublicKey {
+    #[inline]
+    fn from(pair: TweakedPublicKey) -> Self { pair.to_x_only_public_key() }
+}
+
 impl fmt::LowerHex for XOnlyPublicKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { fmt::LowerHex::fmt(self.as_inner(), f) }
 }
@@ -564,6 +580,16 @@ impl From<PrivateKey> for Keypair {
 
 impl From<&PrivateKey> for Keypair {
     fn from(pk: &PrivateKey) -> Self { Self::from_private_key(pk) }
+}
+
+impl From<TweakedKeypair> for Keypair {
+    #[inline]
+    fn from(pair: TweakedKeypair) -> Self { pair.into_keypair() }
+}
+
+impl<'a> From<&'a TweakedKeypair> for &'a Keypair {
+    #[inline]
+    fn from(pair: &'a TweakedKeypair) -> Self { pair.as_keypair() }
 }
 
 impl LegacyPublicKey {
@@ -746,11 +772,8 @@ impl From<secp256k1::PublicKey> for LegacyPublicKey {
     fn from(pk: secp256k1::PublicKey) -> Self { Self::from_secp(pk) }
 }
 
-impl From<LegacyPublicKey> for XOnlyPublicKey {
-    fn from(pk: LegacyPublicKey) -> Self {
-        let (xonly, parity) = pk.to_inner().x_only_public_key();
-        Self::from_secp(xonly, parity)
-    }
+impl From<FullPublicKey> for LegacyPublicKey {
+    fn from(value: FullPublicKey) -> Self { Self::from_secp(value.to_inner()) }
 }
 
 /// An opaque return type for [`LegacyPublicKey::to_sort_key`].
@@ -807,6 +830,22 @@ impl From<LegacyPublicKey> for PubkeyHash {
 
 impl From<&LegacyPublicKey> for PubkeyHash {
     fn from(key: &LegacyPublicKey) -> Self { key.pubkey_hash() }
+}
+
+impl From<FullPublicKey> for PubkeyHash {
+    fn from(key: FullPublicKey) -> Self { key.pubkey_hash() }
+}
+
+impl From<&FullPublicKey> for PubkeyHash {
+    fn from(key: &FullPublicKey) -> Self { key.pubkey_hash() }
+}
+
+impl From<FullPublicKey> for WPubkeyHash {
+    fn from(key: FullPublicKey) -> Self { key.wpubkey_hash() }
+}
+
+impl From<&FullPublicKey> for WPubkeyHash {
+    fn from(key: &FullPublicKey) -> Self { key.wpubkey_hash() }
 }
 
 impl FullPublicKey {
@@ -906,30 +945,6 @@ impl TryFrom<LegacyPublicKey> for FullPublicKey {
 
 impl From<secp256k1::PublicKey> for FullPublicKey {
     fn from(pk: secp256k1::PublicKey) -> Self { Self::from_secp(pk) }
-}
-
-impl From<FullPublicKey> for LegacyPublicKey {
-    fn from(value: FullPublicKey) -> Self { Self::from_secp(value.to_inner()) }
-}
-
-impl From<FullPublicKey> for XOnlyPublicKey {
-    fn from(pk: FullPublicKey) -> Self { pk.to_inner().into() }
-}
-
-impl From<FullPublicKey> for PubkeyHash {
-    fn from(key: FullPublicKey) -> Self { key.pubkey_hash() }
-}
-
-impl From<&FullPublicKey> for PubkeyHash {
-    fn from(key: &FullPublicKey) -> Self { key.pubkey_hash() }
-}
-
-impl From<FullPublicKey> for WPubkeyHash {
-    fn from(key: FullPublicKey) -> Self { key.wpubkey_hash() }
-}
-
-impl From<&FullPublicKey> for WPubkeyHash {
-    fn from(key: &FullPublicKey) -> Self { key.wpubkey_hash() }
 }
 
 impl PrivateKey {
@@ -1371,21 +1386,6 @@ impl TweakedKeypair {
         let xonly = self.as_keypair().to_x_only_public_key();
         (TweakedPublicKey::dangerous_assume_tweaked(xonly), xonly.parity())
     }
-}
-
-impl From<TweakedPublicKey> for XOnlyPublicKey {
-    #[inline]
-    fn from(pair: TweakedPublicKey) -> Self { pair.to_x_only_public_key() }
-}
-
-impl From<TweakedKeypair> for Keypair {
-    #[inline]
-    fn from(pair: TweakedKeypair) -> Self { pair.into_keypair() }
-}
-
-impl<'a> From<&'a TweakedKeypair> for &'a Keypair {
-    #[inline]
-    fn from(pair: &'a TweakedKeypair) -> Self { pair.as_keypair() }
 }
 
 impl From<TweakedKeypair> for TweakedPublicKey {
