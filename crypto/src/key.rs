@@ -465,7 +465,7 @@ impl From<TweakedPublicKey> for XOnlyPublicKey {
 
 impl fmt::LowerHex for XOnlyPublicKey {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { fmt::LowerHex::fmt(self.as_inner(), f) }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.as_inner().fmt(f) }
 }
 // Allocate for serialized size
 #[cfg(feature = "alloc")]
@@ -473,7 +473,7 @@ impl_to_hex_from_lower_hex!(XOnlyPublicKey, |_| constants::SCHNORR_PUBLIC_KEY_SI
 
 impl fmt::Display for XOnlyPublicKey {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { fmt::Display::fmt(self.as_inner(), f) }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.as_inner().fmt(f) }
 }
 
 // XOnlyPublicKey should serialize/deserialize identically to the inner type.
@@ -822,9 +822,7 @@ pub struct SortKey(ArrayVec<u8, 65>);
 
 impl fmt::Display for LegacyPublicKey {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.to_bytes().as_hex(), f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.to_bytes().as_hex().fmt(f) }
 }
 
 impl FromStr for LegacyPublicKey {
@@ -968,9 +966,7 @@ impl FullPublicKey {
 
 impl fmt::Display for FullPublicKey {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.to_bytes().as_hex(), f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.to_bytes().as_hex().fmt(f) }
 }
 
 impl fmt::Debug for FullPublicKey {
@@ -1431,14 +1427,13 @@ impl<'de> serde::Deserialize<'de> for FullPublicKey {
         }
     }
 }
+
 /// Untweaked BIP-0340 X-coord-only public key.
 pub type UntweakedPublicKey = XOnlyPublicKey;
 
 impl fmt::LowerHex for TweakedPublicKey {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::LowerHex::fmt(self.as_x_only_public_key(), f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.as_x_only_public_key().fmt(f) }
 }
 // Allocate for serialized size
 #[cfg(feature = "alloc")]
@@ -1446,9 +1441,7 @@ impl_to_hex_from_lower_hex!(TweakedPublicKey, |_| constants::SCHNORR_PUBLIC_KEY_
 
 impl fmt::Display for TweakedPublicKey {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self.as_x_only_public_key(), f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.as_x_only_public_key().fmt(f) }
 }
 
 /// Untweaked BIP-0340 key pair.
@@ -1519,7 +1512,7 @@ impl From<&Self> for SerializedXOnlyPublicKey {
 impl fmt::Debug for SerializedXOnlyPublicKey {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.as_byte_array().as_hex(), f)
+        self.as_byte_array().as_hex().fmt(f)
     }
 }
 
