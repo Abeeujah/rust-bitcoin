@@ -476,29 +476,6 @@ impl fmt::Display for XOnlyPublicKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.as_inner().fmt(f) }
 }
 
-// XOnlyPublicKey should serialize/deserialize identically to the inner type.
-#[cfg(feature = "serde")]
-impl Serialize for XOnlyPublicKey {
-    #[inline]
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        <secp256k1::XOnlyPublicKey as Serialize>::serialize(self.as_inner(), serializer)
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for XOnlyPublicKey {
-    #[inline]
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        Ok(Self::from_secp(secp256k1::XOnlyPublicKey::deserialize(deserializer)?, Parity::Even))
-    }
-}
-
 impl Keypair {
     /// Generates a new random key pair.
     ///
@@ -1277,6 +1254,29 @@ impl<'de> serde::Deserialize<'de> for WifKey {
         }
 
         d.deserialize_str(WifVisitor)
+    }
+}
+
+// XOnlyPublicKey should serialize/deserialize identically to the inner type.
+#[cfg(feature = "serde")]
+impl Serialize for XOnlyPublicKey {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        <secp256k1::XOnlyPublicKey as Serialize>::serialize(self.as_inner(), serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for XOnlyPublicKey {
+    #[inline]
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(Self::from_secp(secp256k1::XOnlyPublicKey::deserialize(deserializer)?, Parity::Even))
     }
 }
 
