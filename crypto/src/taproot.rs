@@ -4,22 +4,27 @@
 //!
 //! This module provides Taproot signatures used by Bitcoin that can be roundtrip (de)serialized.
 
+use alloc::vec::Vec;
 use core::borrow::Borrow;
-use core::convert::Infallible;
 use core::fmt;
 use core::ops::Deref;
 use core::str::FromStr;
 
 #[cfg(feature = "arbitrary")]
 use arbitrary::{Arbitrary, Unstructured};
+use hex_unstable::DisplayHex as _;
 use internals::array::ArrayExt;
-use internals::{impl_to_hex_from_lower_hex, write_err};
-use io::Write;
+use internals::impl_to_hex_from_lower_hex;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 pub use self::into_iter::IntoIter;
 use crate::hex;
-use crate::prelude::{DisplayHex, Vec};
 use crate::sighash::{InvalidSighashTypeError, TapSighashType};
+
+#[rustfmt::skip]                // Keep public re-exports separate.
+#[doc(no_inline)]
+pub use self::error::{ParseSignatureError, SigFromSliceError};
 
 const MAX_LEN: usize = 65; // 64 for sig, 1B sighash flag
 
@@ -35,6 +40,12 @@ pub struct Signature {
 
 impl Signature {
     /// Deserializes the signature from a slice.
+    ///
+    /// # Errors
+    ///
+    /// - [`SigFromSliceError::InvalidSignatureSize`] if the input slice is not 64 or 65 bytes.
+    /// - [`SigFromSliceError::SighashType`] if the sighash type is invalid or the sighash type
+    ///   is default and the slice is 65 bytes.
     pub fn from_slice(sl: &[u8]) -> Result<Self, SigFromSliceError> {
         if let Ok(signature) = <[u8; 64]>::try_from(sl) {
             // default type
@@ -84,22 +95,15 @@ impl Signature {
         }
         ser_sig
     }
-
-    /// Serializes the signature to `writer`.
-    #[inline]
-    pub fn serialize_to_writer<W: Write + ?Sized>(&self, writer: &mut W) -> Result<(), io::Error> {
-        let sig = self.serialize();
-        sig.write_to(writer)
-    }
 }
 
 impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.sighash_type == TapSighashType::Default {
             // default sighash type, don't add extra sighash byte
-            hex_unstable::fmt_hex_exact!(f, 64, self.serialize(), hex_unstable::Case::Lower)
+            hex_unstable::fmt_hex_exact!(f, 64, (*self).serialize(), hex_unstable::Case::Lower)
         } else {
-            hex_unstable::fmt_hex_exact!(f, 65, self.serialize(), hex_unstable::Case::Lower)
+            hex_unstable::fmt_hex_exact!(f, 65, (*self).serialize(), hex_unstable::Case::Lower)
         }
     }
 }
@@ -125,7 +129,7 @@ pub struct SerializedSignature {
 }
 
 impl SerializedSignature {
-    /// Constructs a new SerializedSignature from a Signature.
+    /// Constructs a new `SerializedSignature` from a Signature.
     ///
     /// In other words this serializes a `Signature` into a `SerializedSignature`.
     #[inline]
@@ -134,6 +138,10 @@ impl SerializedSignature {
     /// Converts the serialized signature into the [`Signature`] struct.
     ///
     /// In other words this deserializes the `SerializedSignature`.
+    ///
+    /// # Errors
+    ///
+    /// See [`Signature::from_slice`].
     #[inline]
     pub fn to_signature(self) -> Result<Signature, SigFromSliceError> {
         Signature::from_slice(&self)
@@ -148,12 +156,6 @@ impl SerializedSignature {
     /// Returns an iterator over bytes of the signature.
     #[inline]
     pub fn iter(&self) -> core::slice::Iter<'_, u8> { self.into_iter() }
-
-    /// Writes this serialized signature to a `writer`.
-    #[inline]
-    pub fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> Result<(), io::Error> {
-        writer.write_all(self)
-    }
 
     /// Constructs new `SerializedSignature` from data and length.
     ///
@@ -381,82 +383,93 @@ mod into_iter {
     }
 }
 
-/// An error constructing a [`taproot::Signature`] from a byte slice.
-///
-/// [`taproot::Signature`]: crate::crypto::taproot::Signature
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum SigFromSliceError {
-    /// Invalid signature hash type.
-    SighashType(InvalidSighashTypeError),
-    /// A secp256k1 error.
-    Secp256k1(secp256k1::Error),
-    /// Invalid Taproot signature size
-    InvalidSignatureSize(usize),
-}
+/// Error types for taproot signatures.
+pub mod error {
+    use core::convert::Infallible;
+    use core::fmt;
 
-impl From<Infallible> for SigFromSliceError {
-    fn from(never: Infallible) -> Self { match never {} }
-}
+    use internals::write_err;
 
-impl fmt::Display for SigFromSliceError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::SighashType(ref e) => write_err!(f, "sighash"; e),
-            Self::Secp256k1(ref e) => write_err!(f, "secp256k1"; e),
-            Self::InvalidSignatureSize(sz) => write!(f, "invalid Taproot signature size: {}", sz),
+    use crate::sighash::InvalidSighashTypeError;
+
+    /// An error constructing a [`Signature`] from a byte slice.
+    ///
+    /// [`Signature`]: super::Signature
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    #[non_exhaustive]
+    pub enum SigFromSliceError {
+        /// Invalid signature hash type.
+        SighashType(InvalidSighashTypeError),
+        /// A secp256k1 error.
+        Secp256k1(secp256k1::Error),
+        /// Invalid Taproot signature size
+        InvalidSignatureSize(usize),
+    }
+
+    impl From<Infallible> for SigFromSliceError {
+        fn from(never: Infallible) -> Self { match never {} }
+    }
+
+    impl fmt::Display for SigFromSliceError {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                Self::SighashType(ref e) => write_err!(f, "sighash"; e),
+                Self::Secp256k1(ref e) => write_err!(f, "secp256k1"; e),
+                Self::InvalidSignatureSize(sz) =>
+                    write!(f, "invalid Taproot signature size: {}", sz),
+            }
         }
     }
-}
 
-#[cfg(feature = "std")]
-impl std::error::Error for SigFromSliceError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Secp256k1(ref e) => Some(e),
-            Self::SighashType(ref e) => Some(e),
-            Self::InvalidSignatureSize(_) => None,
+    #[cfg(feature = "std")]
+    impl std::error::Error for SigFromSliceError {
+        fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+            match self {
+                Self::Secp256k1(ref e) => Some(e),
+                Self::SighashType(ref e) => Some(e),
+                Self::InvalidSignatureSize(_) => None,
+            }
         }
     }
-}
 
-impl From<secp256k1::Error> for SigFromSliceError {
-    fn from(e: secp256k1::Error) -> Self { Self::Secp256k1(e) }
-}
+    impl From<secp256k1::Error> for SigFromSliceError {
+        fn from(e: secp256k1::Error) -> Self { Self::Secp256k1(e) }
+    }
 
-impl From<InvalidSighashTypeError> for SigFromSliceError {
-    fn from(err: InvalidSighashTypeError) -> Self { Self::SighashType(err) }
-}
+    impl From<InvalidSighashTypeError> for SigFromSliceError {
+        fn from(err: InvalidSighashTypeError) -> Self { Self::SighashType(err) }
+    }
 
-/// Error encountered while parsing a Taproot signature from a string.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum ParseSignatureError {
-    /// Hex string decoding error.
-    Hex(hex::DecodeVariableLengthBytesError),
-    /// Signature byte slice decoding error.
-    Decode(SigFromSliceError),
-}
+    /// Error encountered while parsing a Taproot signature from a string.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    #[non_exhaustive]
+    pub enum ParseSignatureError {
+        /// Hex string decoding error.
+        Hex(hex::DecodeVariableLengthBytesError),
+        /// Signature byte slice decoding error.
+        Decode(SigFromSliceError),
+    }
 
-impl From<Infallible> for ParseSignatureError {
-    fn from(never: Infallible) -> Self { match never {} }
-}
+    impl From<Infallible> for ParseSignatureError {
+        fn from(never: Infallible) -> Self { match never {} }
+    }
 
-impl fmt::Display for ParseSignatureError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Hex(ref e) => write_err!(f, "signature hex decoding error"; e),
-            Self::Decode(ref e) => write_err!(f, "signature byte slice decoding error"; e),
+    impl fmt::Display for ParseSignatureError {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                Self::Hex(ref e) => write_err!(f, "signature hex decoding error"; e),
+                Self::Decode(ref e) => write_err!(f, "signature byte slice decoding error"; e),
+            }
         }
     }
-}
 
-#[cfg(feature = "std")]
-impl std::error::Error for ParseSignatureError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Hex(ref e) => Some(e),
-            Self::Decode(ref e) => Some(e),
+    #[cfg(feature = "std")]
+    impl std::error::Error for ParseSignatureError {
+        fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+            match self {
+                Self::Hex(ref e) => Some(e),
+                Self::Decode(ref e) => Some(e),
+            }
         }
     }
 }
