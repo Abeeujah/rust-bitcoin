@@ -450,10 +450,7 @@ impl From<secp256k1::PublicKey> for XOnlyPublicKey {
 
 impl From<LegacyPublicKey> for XOnlyPublicKey {
     #[inline]
-    fn from(pk: LegacyPublicKey) -> Self {
-        let (xonly, parity) = pk.to_inner().x_only_public_key();
-        Self::from_secp(xonly, parity)
-    }
+    fn from(pk: LegacyPublicKey) -> Self { pk.to_inner().into() }
 }
 
 impl From<FullPublicKey> for XOnlyPublicKey {
