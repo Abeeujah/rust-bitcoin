@@ -130,7 +130,8 @@ impl ChaCha20Poly1305 {
         let len_buffer = encode_lengths(aad.len() as u64, content.len() as u64);
         poly.input(&len_buffer);
         let derived_tag = poly.tag();
-        if derived_tag == tag {
+
+        if constant_time_eq(&derived_tag, &tag) {
             let mut chacha = ChaCha20::new_from_block(self.key, self.nonce, 1);
             chacha.apply_keystream(content);
             Ok(())
@@ -138,6 +139,17 @@ impl ChaCha20Poly1305 {
             Err(Error::UnauthenticatedAdditionalData)
         }
     }
+}
+
+/// Performs a constant-time equality check between two 16-byte arrays.
+/// ensuring that the comparison time does not leak information about the contents.
+#[inline]
+fn constant_time_eq(a: &[u8; 16], b: &[u8; 16]) -> bool {
+    let mut res = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        res |= x ^ y;
+    }
+    res == 0
 }
 
 /// AAD and content lengths are each encoded in 8-bytes.
@@ -211,5 +223,36 @@ mod tests {
         buffer[message.len()..].copy_from_slice(&tag);
 
         assert_eq!(&buffer.to_lower_hex_string(), "d31a8d34648e60db7b86afbc53ef7ec2a4aded51296e08fea9e2b5a736ee62d63dbea45e8ca9671282fafb69da92728b1a71de0a9e060b2905d6a5b67ecd3b3692ddbd7f2d778b8c9803aee328091b58fab324e4fad675945585808b4831d7bc3ff4def08e4b7a9de576d26586cec64b61161ae10b594f09e26a7e902ecbd0600691");
+    }
+
+    #[cfg(not(chacha20_poly1305_fuzz))]
+    #[test]
+    fn test_constant_time_eq() {
+        let tag_a = [0x42u8; 16];
+        let tag_b = [0x42u8; 16];
+        let tag_c = [0x00u8; 16];
+
+        // full equality
+        assert!(constant_time_eq(&tag_a, &tag_b));
+
+        // full difference
+        assert!(!constant_time_eq(&tag_a, &tag_c));
+
+        // edge case  - single byte diff
+        let mut tag_d = tag_a;
+
+        // first byte diff
+        tag_d[0] ^= 1;
+        assert!(!constant_time_eq(&tag_a, &tag_d));
+
+        // last byte only diff
+        tag_d = tag_a;
+        tag_d[15] ^= 1;
+        assert!(!constant_time_eq(&tag_a, &tag_d));
+
+        // mid byte diff
+        tag_d = tag_a;
+        tag_d[7] ^= 0xff;
+        assert!(!constant_time_eq(&tag_a, &tag_d));
     }
 }
