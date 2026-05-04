@@ -112,6 +112,11 @@ mod encapsulate {
         pub fn as_inner(&self) -> &secp256k1::Keypair { &self.0 }
     }
 
+    impl Drop for Keypair {
+        #[inline]
+        fn drop(&mut self) { self.0.non_secure_erase(); }
+    }
+
     /// A Bitcoin ECDSA public key.
     #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct LegacyPublicKey {
@@ -151,11 +156,6 @@ mod encapsulate {
         /// Returns whether this public key should be serialized as compressed.
         #[inline]
         pub fn compressed(&self) -> bool { self.compressed }
-    }
-
-    impl Drop for Keypair {
-        #[inline]
-        fn drop(&mut self) { self.0.non_secure_erase(); }
     }
 
     /// An always-compressed Bitcoin ECDSA public key.
