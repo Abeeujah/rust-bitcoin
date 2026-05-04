@@ -1724,6 +1724,11 @@ pub mod error {
     #[non_exhaustive]
     pub struct UncompressedPublicKeyError;
 
+    impl From<Infallible> for UncompressedPublicKeyError {
+        #[inline]
+        fn from(never: Infallible) -> Self { match never {} }
+    }
+
     impl fmt::Display for UncompressedPublicKeyError {
         #[inline]
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1747,6 +1752,11 @@ pub mod error {
         /// Returns the invalid payload length.
         #[inline]
         pub fn invalid_base58_payload_length(&self) -> usize { self.length }
+    }
+
+    impl From<Infallible> for InvalidBase58PayloadLengthError {
+        #[inline]
+        fn from(never: Infallible) -> Self { match never {} }
     }
 
     impl fmt::Display for InvalidBase58PayloadLengthError {
@@ -1779,6 +1789,11 @@ pub mod error {
         pub fn invalid_address_version(&self) -> u8 { self.invalid }
     }
 
+    impl From<Infallible> for InvalidAddressVersionError {
+        #[inline]
+        fn from(never: Infallible) -> Self { match never {} }
+    }
+
     impl fmt::Display for InvalidAddressVersionError {
         #[inline]
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1808,6 +1823,12 @@ pub mod error {
     }
 
     #[cfg(feature = "alloc")]
+    impl From<Infallible> for InvalidWifCompressionFlagError {
+        #[inline]
+        fn from(never: Infallible) -> Self { match never {} }
+    }
+
+    #[cfg(feature = "alloc")]
     impl fmt::Display for InvalidWifCompressionFlagError {
         #[inline]
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1829,6 +1850,11 @@ pub mod error {
     pub enum ParseXOnlyPublicKeyError {
         /// The provided bytes do not represent a valid secp256k1 point x-coordinate.
         InvalidXCoordinate,
+    }
+
+    impl From<Infallible> for ParseXOnlyPublicKeyError {
+        #[inline]
+        fn from(never: Infallible) -> Self { match never {} }
     }
 
     impl fmt::Display for ParseXOnlyPublicKeyError {
@@ -1861,6 +1887,11 @@ pub mod error {
         ResultKeyInvalid,
         /// Invalid parity value encountered during the operation.
         ParityError,
+    }
+
+    impl From<Infallible> for TweakXOnlyPublicKeyError {
+        #[inline]
+        fn from(never: Infallible) -> Self { match never {} }
     }
 
     impl fmt::Display for TweakXOnlyPublicKeyError {
