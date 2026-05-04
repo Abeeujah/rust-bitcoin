@@ -568,59 +568,25 @@ impl LegacyPublicKey {
 
     /// Serializes the key as a byte-encoded pair of values.
     ///
-    /// This will call the provided function with the key as a byte slice in either
-    /// compressed or uncompressed form.
-    ///
-    /// See [`LegacyPublicKey::serialize_compressed`] and [`LegacyPublicKey::serialize_uncompressed`]
-    /// for more information on the byte formats for the key.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use bitcoin_crypto::key::LegacyPublicKey;
-    /// use hashes::hash160;
-    ///
-    /// let key = "02ff12471208c14bd580709cb2358d98975247d8765f92bc25eab3b2763ed605f8"
-    ///     .parse::<LegacyPublicKey>()
-    ///     .unwrap();
-    /// assert!(key.compressed());
-    /// let vec_out = key.with_serialized(<[_]>::to_vec);
-    /// assert_eq!(vec_out.len(), 33);
-    ///
-    /// let hash = key.with_serialized(hash160::Hash::hash).to_string();
-    /// assert_eq!(hash, "dabedb4de2bd2bfec5d38475b9c64af13999a043");
-    /// ```
-    pub fn with_serialized<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
-        if self.compressed() {
-            f(&self.serialize_compressed())
-        } else {
-            f(&self.serialize_uncompressed())
-        }
-    }
-
-    /// Serializes the key as a byte-encoded pair of values.
-    ///
     /// This function serializes the key in compressed form, where the y-coordinate is
     /// represented by only a single bit, as x determines it up to one bit.
     ///
     /// If you want to serialize while considering the compressedness of this key,
-    /// use [`with_serialized`] instead.
+    /// use [`to_bytes`] instead.
     ///
-    /// [`with_serialized`]: LegacyPublicKey::with_serialized
+    /// [`to_bytes`]: LegacyPublicKey::to_bytes
     pub fn serialize_compressed(&self) -> [u8; 33] { self.to_inner().serialize() }
 
     /// Serializes the key as a byte-encoded pair of values, in uncompressed form.
     ///
     /// If you want to serialize while considering the compressedness of this key,
-    /// use [`with_serialized`] instead.
+    /// use [`to_bytes`] instead.
     ///
-    /// [`with_serialized`]: LegacyPublicKey::with_serialized
+    /// [`to_bytes`]: LegacyPublicKey::to_bytes
     pub fn serialize_uncompressed(&self) -> [u8; 65] { self.to_inner().serialize_uncompressed() }
 
     /// Returns bitcoin 160-bit hash of the public key.
-    pub fn pubkey_hash(&self) -> PubkeyHash {
-        PubkeyHash(self.with_serialized(hash160::Hash::hash))
-    }
+    pub fn pubkey_hash(&self) -> PubkeyHash { PubkeyHash(hash160::Hash::hash(&self.to_bytes())) }
 
     /// Returns bitcoin 160-bit hash of the public key for witness program
     ///
@@ -707,7 +673,7 @@ impl LegacyPublicKey {
     /// assert_eq!(unsorted, sorted);
     /// ```
     pub fn to_sort_key(self) -> SortKey {
-        let buf = self.with_serialized(ArrayVec::from_slice);
+        let buf = ArrayVec::from_slice(&self.to_bytes());
         SortKey(buf)
     }
 
@@ -782,7 +748,7 @@ pub struct SortKey(ArrayVec<u8, 65>);
 
 impl fmt::Display for LegacyPublicKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.with_serialized(|bytes| fmt::Display::fmt(&bytes.as_hex(), f))
+        fmt::Display::fmt(&self.to_bytes().as_hex(), f)
     }
 }
 
@@ -1212,7 +1178,7 @@ impl serde::Serialize for LegacyPublicKey {
         if s.is_human_readable() {
             s.collect_str(self)
         } else {
-            self.with_serialized(|bytes| s.serialize_bytes(bytes))
+            s.serialize_bytes(&self.to_bytes())
         }
     }
 }
