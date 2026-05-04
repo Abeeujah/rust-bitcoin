@@ -11,7 +11,7 @@ exclude_re = [
     "deserialize", # Skip serde mutation tests
     "serde_details::<impl de::Visitor<'_>", # Skip serde mutation tests
     "Iterator", # Mutating operations in an iterator can result in an infinite loop
-    "<impl .*Decodable for .*>::decoder", # Mutant replacing Default::default() is equivalent to returning new()
+    "<impl .*Decode for .*>::decoder", # Mutant replacing Default::default() is equivalent to returning new()
     "<impl .*Decoder for .*>::read_limit", # Function is for optimization and does not need to be tested.
 
 
