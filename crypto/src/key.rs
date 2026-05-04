@@ -124,6 +124,15 @@ mod encapsulate {
             Self { compressed: false, inner: key.into() }
         }
 
+        /// Sets the compressedness of this [`LegacyPublicKey`].
+        ///
+        /// This returns a new `LegacyPublicKey` with the same inner value, but the given
+        /// compressedness.
+        #[must_use]
+        pub fn with_compressedness(self, compressed: bool) -> Self {
+            Self { compressed, inner: self.to_inner() }
+        }
+
         /// Returns the inner secp256k1 public key.
         #[inline]
         pub fn to_inner(self) -> secp256k1::PublicKey { self.inner }
@@ -1852,7 +1861,7 @@ mod tests {
 
         let wk = KEY_WIF.parse::<WifKey>().unwrap();
         let pk = LegacyPublicKey::from_private_key(&wk.private_key);
-        let pk_u = LegacyPublicKey::from_secp_uncompressed(pk.to_inner());
+        let pk_u = pk.with_compressedness(false);
 
         assert_tokens(&wk, &[Token::BorrowedStr(KEY_WIF)]);
         assert_tokens(&pk.compact(), &[Token::BorrowedBytes(&PK_BYTES[..])]);
@@ -1866,7 +1875,7 @@ mod tests {
         let key1 = "02ff12471208c14bd580709cb2358d98975247d8765f92bc25eab3b2763ed605f8"
             .parse::<LegacyPublicKey>()
             .unwrap();
-        let key2 = LegacyPublicKey::from_secp_uncompressed(key1.to_inner());
+        let key2 = key1.with_compressedness(false);
         let arrayvec1 = ArrayVec::from_slice(
             &hex::decode_to_array::<33>(
                 "02ff12471208c14bd580709cb2358d98975247d8765f92bc25eab3b2763ed605f8",
@@ -2190,7 +2199,7 @@ mod tests {
         let deser = LegacyPublicKey::from_slice(serialized).unwrap();
         assert_eq!(deser, key);
 
-        let key = LegacyPublicKey::from_secp_uncompressed(key.to_inner());
+        let key = key.with_compressedness(false);
         let serialized = &key.to_bytes();
         assert_eq!(serialized.len(), 65);
         let deser = LegacyPublicKey::from_slice(serialized).unwrap();
