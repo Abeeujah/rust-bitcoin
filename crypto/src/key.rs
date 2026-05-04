@@ -558,10 +558,6 @@ impl From<secp256k1::Keypair> for Keypair {
     fn from(pk: secp256k1::Keypair) -> Self { Self::from_secp(pk) }
 }
 
-impl From<Keypair> for secp256k1::PublicKey {
-    fn from(kp: Keypair) -> Self { kp.to_public_key().to_inner() }
-}
-
 impl From<PrivateKey> for Keypair {
     fn from(pk: PrivateKey) -> Self { Self::from(&pk) }
 }
@@ -2000,10 +1996,10 @@ mod tests {
     #[cfg(feature = "rand")]
     #[cfg(feature = "std")]
     fn public_key_constructors() {
-        let kp = Keypair::generate();
+        let pk = Keypair::generate().to_public_key().to_inner();
 
-        let _ = LegacyPublicKey::from_secp(kp.clone());
-        let _ = LegacyPublicKey::from_secp_uncompressed(kp);
+        let _ = LegacyPublicKey::from_secp(pk);
+        let _ = LegacyPublicKey::from_secp_uncompressed(pk);
     }
 
     #[test]
