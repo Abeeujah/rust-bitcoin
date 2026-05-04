@@ -30,10 +30,17 @@ unsafe fn Add(x: __m128i, y: __m128i) -> __m128i { _mm_add_epi32(x, y) }
 unsafe fn Add3(x: __m128i, y: __m128i, z: __m128i) -> __m128i { Add(Add(x, y), z) }
 
 #[inline(always)]
-unsafe fn Add4(x: __m128i, y: __m128i, z: __m128i, w: __m128i) -> __m128i { Add(Add(x, y), Add(z, w)) }
+unsafe fn Add4(x: __m128i, y: __m128i, z: __m128i, w: __m128i) -> __m128i {
+    Add(Add(x, y), Add(z, w))
+}
 
+#[rustfmt::skip]
 macro_rules! inc2 { ($w:ident, $a:expr) => {{ $w = Add($w, $a); $w }}; }
+
+#[rustfmt::skip]
 macro_rules! inc3 { ($w:ident, $a:expr, $b:expr) => {{ $w = Add3($w, $a, $b); $w }}; }
+
+#[rustfmt::skip]
 macro_rules! inc4 { ($w:ident, $a:expr, $b:expr, $c:expr) => {{ $w = Add4($w, $a, $b, $c); $w }}; }
 
 #[inline(always)]
@@ -62,12 +69,20 @@ unsafe fn Maj(x: __m128i, y: __m128i, z: __m128i) -> __m128i { Or(And(x, y), And
 
 #[inline(always)]
 unsafe fn Sigma0(x: __m128i) -> __m128i {
-    Xor3(Or(ShR::<2>(x), ShL::<30>(x)), Or(ShR::<13>(x), ShL::<19>(x)), Or(ShR::<22>(x), ShL::<10>(x)))
+    Xor3(
+        Or(ShR::<2>(x), ShL::<30>(x)),
+        Or(ShR::<13>(x), ShL::<19>(x)),
+        Or(ShR::<22>(x), ShL::<10>(x)),
+    )
 }
 
 #[inline(always)]
 unsafe fn Sigma1(x: __m128i) -> __m128i {
-    Xor3(Or(ShR::<6>(x), ShL::<26>(x)), Or(ShR::<11>(x), ShL::<21>(x)), Or(ShR::<25>(x), ShL::<7>(x)))
+    Xor3(
+        Or(ShR::<6>(x), ShL::<26>(x)),
+        Or(ShR::<11>(x), ShL::<21>(x)),
+        Or(ShR::<25>(x), ShL::<7>(x)),
+    )
 }
 
 #[inline(always)]
@@ -112,6 +127,7 @@ unsafe fn Write4(output: &mut [[u8; 32]; 4], offset: usize, v: __m128i) {
 
 /// Computes `SHA256d` of four 64-byte inputs in parallel using SSE4.1
 #[target_feature(enable = "sse2,ssse3,sse4.1")]
+#[rustfmt::skip]
 pub(super) unsafe fn sha256d_64_4way(output: &mut [[u8; 32]; 4], input: &[[u8; 64]; 4]) {
     // ------------------ Transform 1 -------------------
     let mut a = K(0x6a09e667);
