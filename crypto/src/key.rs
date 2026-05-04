@@ -783,25 +783,6 @@ impl LegacyPublicKey {
     }
 }
 
-impl From<secp256k1::PublicKey> for LegacyPublicKey {
-    #[inline]
-    fn from(pk: secp256k1::PublicKey) -> Self { Self::from_secp(pk) }
-}
-
-impl From<FullPublicKey> for LegacyPublicKey {
-    #[inline]
-    fn from(value: FullPublicKey) -> Self { Self::from_secp(value.to_inner()) }
-}
-
-/// An opaque return type for [`LegacyPublicKey::to_sort_key`].
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub struct SortKey(ArrayVec<u8, 65>);
-
-impl fmt::Display for LegacyPublicKey {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.to_bytes().as_hex().fmt(f) }
-}
-
 impl FromStr for LegacyPublicKey {
     type Err = ParsePublicKeyError;
     #[inline]
@@ -829,6 +810,25 @@ impl FromStr for LegacyPublicKey {
         }
     }
 }
+
+impl From<secp256k1::PublicKey> for LegacyPublicKey {
+    #[inline]
+    fn from(pk: secp256k1::PublicKey) -> Self { Self::from_secp(pk) }
+}
+
+impl From<FullPublicKey> for LegacyPublicKey {
+    #[inline]
+    fn from(value: FullPublicKey) -> Self { Self::from_secp(value.to_inner()) }
+}
+
+impl fmt::Display for LegacyPublicKey {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.to_bytes().as_hex().fmt(f) }
+}
+
+/// An opaque return type for [`LegacyPublicKey::to_sort_key`].
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub struct SortKey(ArrayVec<u8, 65>);
 
 hashes::hash_newtype! {
     /// A hash of a public key.
@@ -941,18 +941,6 @@ impl FullPublicKey {
     }
 }
 
-impl fmt::Display for FullPublicKey {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.to_bytes().as_hex().fmt(f) }
-}
-
-impl fmt::Debug for FullPublicKey {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_fmt(format_args!("FullPublicKey({})", self))
-    }
-}
-
 impl FromStr for FullPublicKey {
     type Err = ParseFullPublicKeyError;
 
@@ -979,6 +967,18 @@ impl TryFrom<LegacyPublicKey> for FullPublicKey {
 impl From<secp256k1::PublicKey> for FullPublicKey {
     #[inline]
     fn from(pk: secp256k1::PublicKey) -> Self { Self::from_secp(pk) }
+}
+
+impl fmt::Display for FullPublicKey {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.to_bytes().as_hex().fmt(f) }
+}
+
+impl fmt::Debug for FullPublicKey {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_fmt(format_args!("FullPublicKey({})", self))
+    }
 }
 
 impl PrivateKey {
@@ -1431,6 +1431,20 @@ impl<'de> serde::Deserialize<'de> for FullPublicKey {
 /// Untweaked BIP-0340 X-coord-only public key.
 pub type UntweakedPublicKey = XOnlyPublicKey;
 
+impl TweakedPublicKey {
+    /// Returns the underlying public key.
+    #[inline]
+    #[doc(hidden)]
+    #[deprecated(since = "0.32.6", note = "use to_x_only_public_key() instead")]
+    pub fn to_inner(self) -> XOnlyPublicKey { self.to_x_only_public_key() }
+
+    /// Serializes the key as a byte-encoded x coordinate value (32 bytes).
+    #[inline]
+    pub fn serialize(&self) -> [u8; constants::SCHNORR_PUBLIC_KEY_SIZE] {
+        self.as_x_only_public_key().serialize().0
+    }
+}
+
 impl fmt::LowerHex for TweakedPublicKey {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.as_x_only_public_key().fmt(f) }
@@ -1446,20 +1460,6 @@ impl fmt::Display for TweakedPublicKey {
 
 /// Untweaked BIP-0340 key pair.
 pub type UntweakedKeypair = Keypair;
-
-impl TweakedPublicKey {
-    /// Returns the underlying public key.
-    #[inline]
-    #[doc(hidden)]
-    #[deprecated(since = "0.32.6", note = "use to_x_only_public_key() instead")]
-    pub fn to_inner(self) -> XOnlyPublicKey { self.to_x_only_public_key() }
-
-    /// Serializes the key as a byte-encoded x coordinate value (32 bytes).
-    #[inline]
-    pub fn serialize(&self) -> [u8; constants::SCHNORR_PUBLIC_KEY_SIZE] {
-        self.as_x_only_public_key().serialize().0
-    }
-}
 
 impl TweakedKeypair {
     /// Returns the underlying key pair.
