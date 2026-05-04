@@ -32,10 +32,17 @@ unsafe fn Add(x: __m256i, y: __m256i) -> __m256i { _mm256_add_epi32(x, y) }
 unsafe fn Add3(x: __m256i, y: __m256i, z: __m256i) -> __m256i { Add(Add(x, y), z) }
 
 #[inline(always)]
-unsafe fn Add4(x: __m256i, y: __m256i, z: __m256i, w: __m256i) -> __m256i { Add(Add(x, y), Add(z, w)) }
+unsafe fn Add4(x: __m256i, y: __m256i, z: __m256i, w: __m256i) -> __m256i {
+    Add(Add(x, y), Add(z, w))
+}
 
+#[rustfmt::skip]
 macro_rules! inc2 { ($w:ident, $a:expr) => {{ $w = Add($w, $a); $w }}; }
+
+#[rustfmt::skip]
 macro_rules! inc3 { ($w:ident, $a:expr, $b:expr) => {{ $w = Add3($w, $a, $b); $w }}; }
+
+#[rustfmt::skip]
 macro_rules! inc4 { ($w:ident, $a:expr, $b:expr, $c:expr) => {{ $w = Add4($w, $a, $b, $c); $w }}; }
 
 #[inline(always)]
@@ -64,12 +71,20 @@ unsafe fn Maj(x: __m256i, y: __m256i, z: __m256i) -> __m256i { Or(And(x, y), And
 
 #[inline(always)]
 unsafe fn Sigma0(x: __m256i) -> __m256i {
-    Xor3(Or(ShR::<2>(x), ShL::<30>(x)), Or(ShR::<13>(x), ShL::<19>(x)), Or(ShR::<22>(x), ShL::<10>(x)))
+    Xor3(
+        Or(ShR::<2>(x), ShL::<30>(x)),
+        Or(ShR::<13>(x), ShL::<19>(x)),
+        Or(ShR::<22>(x), ShL::<10>(x)),
+    )
 }
 
 #[inline(always)]
 unsafe fn Sigma1(x: __m256i) -> __m256i {
-    Xor3(Or(ShR::<6>(x), ShL::<26>(x)), Or(ShR::<11>(x), ShL::<21>(x)), Or(ShR::<25>(x), ShL::<7>(x)))
+    Xor3(
+        Or(ShR::<6>(x), ShL::<26>(x)),
+        Or(ShR::<11>(x), ShL::<21>(x)),
+        Or(ShR::<25>(x), ShL::<7>(x)),
+    )
 }
 
 #[inline(always)]
@@ -93,6 +108,7 @@ macro_rules! round {
 }
 
 #[inline(always)]
+#[rustfmt::skip]
 unsafe fn Read8(input: &[[u8; 64]; 8], offset: usize) -> __m256i {
     let ret = _mm256_set_epi32(
         i32::from_le_bytes(input[0][offset..offset + 4].try_into().unwrap()),
@@ -111,6 +127,7 @@ unsafe fn Read8(input: &[[u8; 64]; 8], offset: usize) -> __m256i {
 }
 
 #[inline(always)]
+#[rustfmt::skip]
 unsafe fn Write8(output: &mut [[u8; 32]; 8], offset: usize, v: __m256i) {
     let v = _mm256_shuffle_epi8(v, _mm256_set_epi32(
         0x0C0D0E0F, 0x08090A0B, 0x04050607, 0x00010203,
@@ -128,6 +145,7 @@ unsafe fn Write8(output: &mut [[u8; 32]; 8], offset: usize, v: __m256i) {
 
 /// Computes `SHA256d` of eight 64-byte inputs in parallel using AVX2
 #[target_feature(enable = "avx,avx2")]
+#[rustfmt::skip]
 pub(super) unsafe fn sha256d_64_8way(output: &mut [[u8; 32]; 8], input: &[[u8; 64]; 8]) {
     // ------------------ Transform 1 -------------------
     let mut a = K(0x6a09e667);
