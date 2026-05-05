@@ -27,8 +27,9 @@ fn main() {}
 /// - `LengthPrefixExceedsMaxError`: The new decoders cap collection lengths at
 ///   `0x2_000_000`; the old decoders only rejected values above `u64::MAX`.
 ///
-/// - `TransactionDecoderError` with "no outputs": The new `TransactionDecoder` rejects
-///   transactions with zero outputs; the old decoder accepted them.
+/// - `TransactionDecoderError` with "no outputs" or "sum of output values": The new
+///   `TransactionDecoder` rejects zero-output transactions and transactions whose output
+///   values sum to more than `MAX_MONEY`; the old decoder accepted both.
 fn is_known_decoder_divergence(err: &(dyn std::error::Error + 'static)) -> bool {
     use bitcoin::blockdata::transaction::TransactionDecoderError;
     use bitcoin_consensus_encoding::LengthPrefixExceedsMaxError;
@@ -48,9 +49,12 @@ fn is_known_decoder_divergence(err: &(dyn std::error::Error + 'static)) -> bool 
         if e.downcast_ref::<LengthPrefixExceedsMaxError>().is_some() {
             return true;
         }
-        if e.downcast_ref::<TransactionDecoderError>()
-            .is_some_and(|e| e.to_string() == "transaction has no outputs")
-        {
+        if e.downcast_ref::<TransactionDecoderError>().is_some_and(|e| {
+            let s = e.to_string();
+            s == "transaction has no outputs"
+                || s.starts_with("sum of output values ")
+                || s.starts_with("duplicate input")
+        }) {
             return true;
         }
         current = e.source();
