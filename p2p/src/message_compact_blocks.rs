@@ -40,7 +40,7 @@ impl encoding::Encode for SendCmpct {
 type SendCmpctInnerDecoder = Decoder2<ArrayDecoder<1>, ArrayDecoder<8>>;
 
 /// Decoder type for the [`SendCmpct`] message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct SendCmpctDecoder(SendCmpctInnerDecoder);
 
 impl encoding::Decoder for SendCmpctDecoder {
@@ -65,10 +65,6 @@ impl encoding::Decoder for SendCmpctDecoder {
 
 impl encoding::Decode for SendCmpct {
     type Decoder = SendCmpctDecoder;
-
-    fn decoder() -> Self::Decoder {
-        SendCmpctDecoder(Decoder2::new(ArrayDecoder::new(), ArrayDecoder::new()))
-    }
 }
 
 /// Error types for [`SendCmpct`] messages.

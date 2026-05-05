@@ -20,6 +20,7 @@ use crate::{DecodeError, UnconsumedError};
 ///
 /// struct Foo([u8; 4]);
 ///
+/// #[derive(Default)]
 /// struct FooDecoder(ArrayDecoder<4>);
 ///
 /// impl Decoder for FooDecoder {
@@ -35,7 +36,6 @@ use crate::{DecodeError, UnconsumedError};
 ///
 /// impl Decode for Foo {
 ///     type Decoder = FooDecoder;
-///     fn decoder() -> Self::Decoder { FooDecoder(ArrayDecoder::new()) }
 /// }
 ///
 /// let foo: Foo = decode_from_slice(&[0xde, 0xad, 0xbe, 0xef]).unwrap();
@@ -43,10 +43,12 @@ use crate::{DecodeError, UnconsumedError};
 /// ```
 pub trait Decode {
     /// Associated decoder for the type.
-    type Decoder: Decoder<Output = Self>;
+    type Decoder: Decoder<Output = Self> + Default;
 
     /// Constructs a "default decoder" for the type.
-    fn decoder() -> Self::Decoder;
+    fn decoder() -> Self::Decoder {
+        Self::Decoder::default()
+    }
 }
 
 /// A push decoder for a consensus-decodable object.

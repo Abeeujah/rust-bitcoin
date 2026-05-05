@@ -62,8 +62,6 @@ impl encoding::Encode for TxMerkleNode {
 
 impl encoding::Decode for TxMerkleNode {
     type Decoder = TxMerkleNodeDecoder;
-    #[inline]
-    fn decoder() -> Self::Decoder { TxMerkleNodeDecoder(encoding::ArrayDecoder::<32>::new()) }
 }
 
 encoding::encoder_newtype_exact! {

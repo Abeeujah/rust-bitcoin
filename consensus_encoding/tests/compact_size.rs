@@ -24,6 +24,7 @@ impl Encode for CompactSizeUsize {
 
 /// Wraps `CompactSizeDecoder` to produce `CompactSizeUsize`.
 #[cfg(feature = "alloc")]
+#[derive(Default)]
 struct CompactSizeUsizeDecoderWrapper(CompactSizeDecoder);
 
 #[cfg(feature = "alloc")]
@@ -43,7 +44,6 @@ impl Decoder for CompactSizeUsizeDecoderWrapper {
 #[cfg(feature = "alloc")]
 impl Decode for CompactSizeUsize {
     type Decoder = CompactSizeUsizeDecoderWrapper;
-    fn decoder() -> Self::Decoder { CompactSizeUsizeDecoderWrapper(CompactSizeDecoder::new()) }
 }
 
 /// A `u64` value encoded and decoded as a compact size integer.
@@ -61,6 +61,7 @@ impl Encode for CompactSizeU64 {
 
 /// Wraps `CompactSizeU64Decoder` to produce `CompactSizeU64`.
 #[cfg(feature = "alloc")]
+#[derive(Default)]
 struct CompactSizeU64DecoderWrapper(CompactSizeU64Decoder);
 
 #[cfg(feature = "alloc")]
@@ -80,7 +81,6 @@ impl Decoder for CompactSizeU64DecoderWrapper {
 #[cfg(feature = "alloc")]
 impl Decode for CompactSizeU64 {
     type Decoder = CompactSizeU64DecoderWrapper;
-    fn decoder() -> Self::Decoder { CompactSizeU64DecoderWrapper(CompactSizeU64Decoder::new()) }
 }
 
 #[test]

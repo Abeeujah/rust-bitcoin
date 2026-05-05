@@ -129,8 +129,6 @@ impl encoding::Encode for CommandString {
 
 impl encoding::Decode for CommandString {
     type Decoder = CommandStringDecoder;
-
-    fn decoder() -> Self::Decoder { CommandStringDecoder { inner: encoding::ArrayDecoder::new() } }
 }
 
 /// Encoder for the [`CommandString`] type
@@ -160,7 +158,7 @@ impl encoding::ExactSizeEncoder for CommandStringEncoder {
 }
 
 /// Decoder for [`CommandString`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct CommandStringDecoder {
     inner: encoding::ArrayDecoder<12>,
 }
@@ -271,7 +269,7 @@ type V1MessageHeaderInnerDecoder = encoding::Decoder4<
 >;
 
 /// The Decoder for `V1MessageHeader`
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct V1MessageHeaderDecoder(V1MessageHeaderInnerDecoder);
 
 impl encoding::Decoder for V1MessageHeaderDecoder {
@@ -301,14 +299,6 @@ impl encoding::Decoder for V1MessageHeaderDecoder {
 
 impl encoding::Decode for V1MessageHeader {
     type Decoder = V1MessageHeaderDecoder;
-    fn decoder() -> Self::Decoder {
-        V1MessageHeaderDecoder(encoding::Decoder4::new(
-            encoding::ArrayDecoder::<4>::new(),
-            CommandString::decoder(),
-            encoding::ArrayDecoder::<4>::new(),
-            encoding::ArrayDecoder::<4>::new(),
-        ))
-    }
 }
 
 /// A Network message using the v2 p2p protocol defined in BIP-0324.
@@ -344,7 +334,7 @@ impl encoding::Encode for InventoryPayload {
 type InventoryInnerDecoder = VecDecoder<message_blockdata::Inventory>;
 
 /// Decoder type for [`InventoryPayload`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct InventoryPayloadDecoder(InventoryInnerDecoder);
 
 impl encoding::Decoder for InventoryPayloadDecoder {
@@ -367,9 +357,6 @@ impl encoding::Decoder for InventoryPayloadDecoder {
 
 impl encoding::Decode for InventoryPayload {
     type Decoder = InventoryPayloadDecoder;
-    fn decoder() -> Self::Decoder {
-        InventoryPayloadDecoder(VecDecoder::<message_blockdata::Inventory>::new())
-    }
 }
 
 /// A list of legacy p2p address messages.
@@ -396,7 +383,7 @@ impl encoding::Encode for AddrPayload {
 type AddrPayloadInnerDecoder = VecDecoder<AddrV1Message>;
 
 /// Decoder type for [`AddrPayload`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AddrPayloadDecoder(AddrPayloadInnerDecoder);
 
 impl encoding::Decoder for AddrPayloadDecoder {
@@ -419,7 +406,6 @@ impl encoding::Decoder for AddrPayloadDecoder {
 
 impl encoding::Decode for AddrPayload {
     type Decoder = AddrPayloadDecoder;
-    fn decoder() -> Self::Decoder { AddrPayloadDecoder(VecDecoder::new()) }
 }
 
 /// A list of v2 address messages.
@@ -449,7 +435,7 @@ impl encoding::Encode for AddrV2Payload {
 type AddrV2PayloadInnerDecoder = VecDecoder<AddrV2Message>;
 
 /// Decoder type for [`AddrV2Payload`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AddrV2PayloadDecoder(AddrV2PayloadInnerDecoder);
 
 impl encoding::Decoder for AddrV2PayloadDecoder {
@@ -472,7 +458,6 @@ impl encoding::Decoder for AddrV2PayloadDecoder {
 
 impl encoding::Decode for AddrV2Payload {
     type Decoder = AddrV2PayloadDecoder;
-    fn decoder() -> Self::Decoder { AddrV2PayloadDecoder(VecDecoder::new()) }
 }
 
 /// The `feefilter` message, wrapper around [`FeeRate`] for P2P wire format encoding.
@@ -553,8 +538,6 @@ impl encoding::Decoder for FeeFilterDecoder {
 
 impl encoding::Decode for FeeFilter {
     type Decoder = FeeFilterDecoder;
-
-    fn decoder() -> Self::Decoder { FeeFilterDecoder::new() }
 }
 
 #[cfg(feature = "arbitrary")]
@@ -597,7 +580,7 @@ impl encoding::Encode for Ping {
 }
 
 /// The Decoder for [`Ping`]
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct PingDecoder(encoding::ArrayDecoder<8>);
 
 impl encoding::Decoder for PingDecoder {
@@ -621,7 +604,6 @@ impl encoding::Decoder for PingDecoder {
 
 impl encoding::Decode for Ping {
     type Decoder = PingDecoder;
-    fn decoder() -> Self::Decoder { PingDecoder(encoding::ArrayDecoder::<8>::new()) }
 }
 
 /// Serializer for Pong
@@ -654,7 +636,7 @@ impl encoding::Encode for Pong {
 }
 
 /// The Decoder for [`Pong`]
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct PongDecoder(encoding::ArrayDecoder<8>);
 
 impl encoding::Decoder for PongDecoder {
@@ -678,7 +660,6 @@ impl encoding::Decoder for PongDecoder {
 
 impl encoding::Decode for Pong {
     type Decoder = PongDecoder;
-    fn decoder() -> Self::Decoder { PongDecoder(encoding::ArrayDecoder::<8>::new()) }
 }
 
 /// A Network message payload. Proper documentation is available at
@@ -1403,12 +1384,16 @@ enum DecoderState {
     },
 }
 
+impl Default for DecoderState {
+    fn default() -> Self { Self::ReadingHeader { header_decoder: encoding::Decoder4::default() } }
+}
+
 /// Decoder for [`V1NetworkMessage`].
 ///
 /// This decoder implements a two-phase decoding process for Bitcoin V1 P2P messages.
 /// It first decodes the fixed-sized header. It then uses the payload length information
 /// to decode the dynamically sized network message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct V1NetworkMessageDecoder {
     state: DecoderState,
 }
@@ -1515,19 +1500,6 @@ impl encoding::Decoder for V1NetworkMessageDecoder {
 
 impl encoding::Decode for V1NetworkMessage {
     type Decoder = V1NetworkMessageDecoder;
-
-    fn decoder() -> Self::Decoder {
-        V1NetworkMessageDecoder {
-            state: DecoderState::ReadingHeader {
-                header_decoder: encoding::Decoder4::new(
-                    encoding::ArrayDecoder::new(),
-                    CommandStringDecoder { inner: encoding::ArrayDecoder::new() },
-                    encoding::ArrayDecoder::new(),
-                    encoding::ArrayDecoder::new(),
-                ),
-            },
-        }
-    }
 }
 
 /// Encoder for [`V2NetworkMessage`].
@@ -1658,7 +1630,7 @@ impl encoding::Encode for NetworkHeader {
 type NetworkHeaderInnerDecoder = Decoder2<HeaderDecoder, ArrayDecoder<1>>;
 
 /// The decoder type for a [`NetworkHeader`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct NetworkHeaderDecoder(NetworkHeaderInnerDecoder);
 
 impl encoding::Decoder for NetworkHeaderDecoder {
@@ -1682,10 +1654,6 @@ impl encoding::Decoder for NetworkHeaderDecoder {
 
 impl encoding::Decode for NetworkHeader {
     type Decoder = NetworkHeaderDecoder;
-
-    fn decoder() -> Self::Decoder {
-        NetworkHeaderDecoder(Decoder2::new(block::Header::decoder(), ArrayDecoder::new()))
-    }
 }
 
 /// A list of bitcoin block headers.
@@ -1727,7 +1695,7 @@ impl encoding::Encode for HeadersMessage {
 type HeadersMessageInnerDecoder = VecDecoder<NetworkHeader>;
 
 /// The decoder type for a [`HeadersMessage`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct HeadersMessageDecoder(HeadersMessageInnerDecoder);
 
 impl encoding::Decoder for HeadersMessageDecoder {
@@ -1751,8 +1719,6 @@ impl encoding::Decoder for HeadersMessageDecoder {
 
 impl encoding::Decode for HeadersMessage {
     type Decoder = HeadersMessageDecoder;
-
-    fn decoder() -> Self::Decoder { HeadersMessageDecoder(VecDecoder::new()) }
 }
 
 // State machine for decoding a [`V2NetworkMessage`].
@@ -1771,12 +1737,17 @@ enum V2NetworkMessageDecoderState {
     Errored,
 }
 
+impl Default for V2NetworkMessageDecoderState {
+    fn default() -> Self { Self::ShortId(<encoding::ArrayDecoder<1>>::default()) }
+}
+
 /// Decoder for [`V2NetworkMessage`].
 ///
 /// This decoder implements a multi-phase decoding process for Bitcoin V2 P2P messages.
 /// It first decodes the 1-byte short ID. For optimized messages (IDs 1-28), it dispatches
 /// directly to the payload decoder. For non-optimized messages (ID 0), it first reads the
 /// 12-byte command string before dispatching.
+#[derive(Default)]
 pub struct V2NetworkMessageDecoder {
     state: V2NetworkMessageDecoderState,
 }
@@ -1945,12 +1916,6 @@ impl encoding::Decoder for V2NetworkMessageDecoder {
 
 impl encoding::Decode for V2NetworkMessage {
     type Decoder = V2NetworkMessageDecoder;
-
-    fn decoder() -> Self::Decoder {
-        V2NetworkMessageDecoder {
-            state: V2NetworkMessageDecoderState::ShortId(encoding::ArrayDecoder::new()),
-        }
-    }
 }
 
 /// Does a double-SHA256 on `data` and returns the first 4 bytes.

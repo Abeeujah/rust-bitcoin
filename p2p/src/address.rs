@@ -159,7 +159,7 @@ type AddressInnerDecoder = encoding::Decoder3<
 >;
 
 /// The Decoder for [`Address`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AddressDecoder(AddressInnerDecoder);
 
 impl encoding::Decoder for AddressDecoder {
@@ -184,13 +184,6 @@ impl encoding::Decoder for AddressDecoder {
 
 impl encoding::Decode for Address {
     type Decoder = AddressDecoder;
-    fn decoder() -> Self::Decoder {
-        AddressDecoder(encoding::Decoder3::new(
-            ServiceFlags::decoder(),
-            encoding::ArrayDecoder::<16>::new(),
-            encoding::ArrayDecoder::<2>::new(),
-        ))
-    }
 }
 
 /// Data type received in an `addr` message.
@@ -222,7 +215,7 @@ impl encoding::Encode for AddrV1Message {
 type AddrV1MessageInnerDecoder = Decoder2<ArrayDecoder<4>, AddressDecoder>;
 
 /// The decoder for an [`AddrV1Message`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AddrV1MessageDecoder(AddrV1MessageInnerDecoder);
 
 impl encoding::Decoder for AddrV1MessageDecoder {
@@ -247,13 +240,6 @@ impl encoding::Decoder for AddrV1MessageDecoder {
 
 impl encoding::Decode for AddrV1Message {
     type Decoder = AddrV1MessageDecoder;
-
-    fn decoder() -> Self::Decoder {
-        AddrV1MessageDecoder(AddrV1MessageInnerDecoder::new(
-            ArrayDecoder::new(),
-            Address::decoder(),
-        ))
-    }
 }
 
 /// Supported networks for use in BIP-0155 addrv2 message
@@ -494,7 +480,7 @@ impl encoding::Encode for AddrV2 {
 type AddrV2InnerDecoder = Decoder2<ArrayDecoder<1>, ByteVecDecoder>;
 
 /// The decoder type for an [`AddrV2`] type.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AddrV2Decoder(AddrV2InnerDecoder);
 
 impl AddrV2Decoder {
@@ -589,10 +575,6 @@ impl encoding::Decoder for AddrV2Decoder {
 
 impl encoding::Decode for AddrV2 {
     type Decoder = AddrV2Decoder;
-
-    fn decoder() -> Self::Decoder {
-        AddrV2Decoder(Decoder2::new(ArrayDecoder::new(), ByteVecDecoder::new()))
-    }
 }
 
 /// Address received from BIP-0155 addrv2 message
@@ -659,7 +641,7 @@ type AddrV2MessageInnerDecoder =
     Decoder4<ArrayDecoder<4>, CompactSizeU64Decoder, AddrV2Decoder, ArrayDecoder<2>>;
 
 /// The decoder for an [`AddrV2Message`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AddrV2MessageDecoder(AddrV2MessageInnerDecoder);
 
 impl encoding::Decoder for AddrV2MessageDecoder {
@@ -686,15 +668,6 @@ impl encoding::Decoder for AddrV2MessageDecoder {
 
 impl encoding::Decode for AddrV2Message {
     type Decoder = AddrV2MessageDecoder;
-
-    fn decoder() -> Self::Decoder {
-        AddrV2MessageDecoder(AddrV2MessageInnerDecoder::new(
-            ArrayDecoder::new(),
-            CompactSizeU64Decoder::new(),
-            AddrV2::decoder(),
-            ArrayDecoder::new(),
-        ))
-    }
 }
 
 /// Error types for address messages.

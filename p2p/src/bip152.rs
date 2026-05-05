@@ -75,7 +75,7 @@ impl encoding::Encode for PrefilledTransaction {
 type PrefilledTransactionInnerDecoder = Decoder2<CompactSizeDecoder, TransactionDecoder>;
 
 /// The decoder for a [`PrefilledTransaction`] message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct PrefilledTransactionDecoder(PrefilledTransactionInnerDecoder);
 
 impl PrefilledTransactionDecoder {
@@ -109,13 +109,6 @@ impl encoding::Decoder for PrefilledTransactionDecoder {
 
 impl encoding::Decode for PrefilledTransaction {
     type Decoder = PrefilledTransactionDecoder;
-
-    fn decoder() -> Self::Decoder {
-        PrefilledTransactionDecoder(Decoder2::new(
-            CompactSizeDecoder::new(),
-            TransactionDecoder::new(),
-        ))
-    }
 }
 
 /// Trait that abstracts over a transaction identifier i.e., `Txid` and `Wtxid`.
@@ -212,7 +205,7 @@ impl encoding::Encode for ShortId {
 type ShortIdInnerDecoder = ArrayDecoder<6>;
 
 /// Decoder type for a [`ShortId`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct ShortIdDecoder(ShortIdInnerDecoder);
 
 impl encoding::Decoder for ShortIdDecoder {
@@ -236,8 +229,6 @@ impl encoding::Decoder for ShortIdDecoder {
 
 impl encoding::Decode for ShortId {
     type Decoder = ShortIdDecoder;
-
-    fn decoder() -> Self::Decoder { ShortIdDecoder(ShortIdInnerDecoder::new()) }
 }
 
 /// A structure to relay a block header, short IDs, and a select few transactions.
@@ -300,7 +291,7 @@ type HeaderAndShortIdsInnerDecoder =
     Decoder4<HeaderDecoder, ArrayDecoder<8>, VecDecoder<ShortId>, VecDecoder<PrefilledTransaction>>;
 
 /// Decoder type for the [`HeaderAndShortIds`] message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct HeaderAndShortIdsDecoder(HeaderAndShortIdsInnerDecoder);
 
 impl HeaderAndShortIdsDecoder {
@@ -340,15 +331,6 @@ impl encoding::Decoder for HeaderAndShortIdsDecoder {
 
 impl encoding::Decode for HeaderAndShortIds {
     type Decoder = HeaderAndShortIdsDecoder;
-
-    fn decoder() -> Self::Decoder {
-        HeaderAndShortIdsDecoder(Decoder4::new(
-            Header::decoder(),
-            ArrayDecoder::new(),
-            VecDecoder::<ShortId>::new(),
-            VecDecoder::<PrefilledTransaction>::new(),
-        ))
-    }
 }
 
 impl HeaderAndShortIds {
@@ -445,7 +427,7 @@ impl encoding::Encode for Offset {
     fn encoder(&self) -> Self::Encoder<'_> { CompactSizeEncoder::new(self.0) }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 struct OffsetDecoder(CompactSizeDecoder);
 
 impl encoding::Decoder for OffsetDecoder {
@@ -466,8 +448,6 @@ impl encoding::Decoder for OffsetDecoder {
 
 impl encoding::Decode for Offset {
     type Decoder = OffsetDecoder;
-
-    fn decoder() -> Self::Decoder { OffsetDecoder(CompactSizeDecoder::new()) }
 }
 
 /// A [`BlockTransactionsRequest`] structure is used to list transaction indexes
@@ -558,7 +538,7 @@ impl encoding::Encode for BlockTransactionsRequest {
 type BlockTransactionsRequestInnerDecoder = Decoder2<BlockHashDecoder, VecDecoder<Offset>>;
 
 /// The encoder type for a [`BlockTransactionsRequest`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct BlockTransactionsRequestDecoder(BlockTransactionsRequestInnerDecoder);
 
 impl encoding::Decoder for BlockTransactionsRequestDecoder {
@@ -582,10 +562,6 @@ impl encoding::Decoder for BlockTransactionsRequestDecoder {
 
 impl encoding::Decode for BlockTransactionsRequest {
     type Decoder = BlockTransactionsRequestDecoder;
-
-    fn decoder() -> Self::Decoder {
-        BlockTransactionsRequestDecoder(Decoder2::new(BlockHashDecoder::new(), VecDecoder::new()))
-    }
 }
 
 /// A [`BlockTransactions`] structure is used to provide some of the transactions
@@ -629,7 +605,7 @@ impl encoding::Encode for BlockTransactions {
 type BlockTransactionsInnerDecoder = Decoder2<BlockHashDecoder, VecDecoder<Transaction>>;
 
 /// Decoder type for a [`BlockTransactions`] message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct BlockTransactionsDecoder(BlockTransactionsInnerDecoder);
 
 impl encoding::Decoder for BlockTransactionsDecoder {
@@ -653,13 +629,6 @@ impl encoding::Decoder for BlockTransactionsDecoder {
 
 impl encoding::Decode for BlockTransactions {
     type Decoder = BlockTransactionsDecoder;
-
-    fn decoder() -> Self::Decoder {
-        BlockTransactionsDecoder(Decoder2::new(
-            BlockHashDecoder::new(),
-            VecDecoder::<Transaction>::new(),
-        ))
-    }
 }
 
 impl BlockTransactions {

@@ -101,7 +101,7 @@ impl encoding::Encode for Inventory {
 type InventoryInnerDecoder = Decoder2<ArrayDecoder<4>, ArrayDecoder<32>>;
 
 /// The decoder for the [`Inventory`] type.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct InventoryDecoder(InventoryInnerDecoder);
 
 impl encoding::Decoder for InventoryDecoder {
@@ -135,9 +135,6 @@ impl encoding::Decoder for InventoryDecoder {
 
 impl encoding::Decode for Inventory {
     type Decoder = InventoryDecoder;
-    fn decoder() -> Self::Decoder {
-        InventoryDecoder(Decoder2::new(ArrayDecoder::<4>::new(), ArrayDecoder::<32>::new()))
-    }
 }
 
 /// A block locator.
@@ -246,7 +243,6 @@ impl encoding::Decoder for BlockLocatorDecoder {
 
 impl encoding::Decode for BlockLocator {
     type Decoder = BlockLocatorDecoder;
-    fn decoder() -> Self::Decoder { BlockLocatorDecoder::new() }
 }
 
 // Some simple messages
@@ -322,11 +318,11 @@ type GetBlocksOrHeadersInnerDecoder =
     Decoder3<ProtocolVersionDecoder, BlockLocatorDecoder, BlockHashDecoder>;
 
 /// Decoder type for [`GetBlocksMessage`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct GetBlocksMessageDecoder(GetBlocksOrHeadersInnerDecoder);
 
 /// Decoder type for [`GetHeadersMessage`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct GetHeadersMessageDecoder(GetBlocksOrHeadersInnerDecoder);
 
 impl encoding::Decoder for GetHeadersMessageDecoder {
@@ -371,24 +367,10 @@ impl encoding::Decoder for GetBlocksMessageDecoder {
 
 impl encoding::Decode for GetBlocksMessage {
     type Decoder = GetBlocksMessageDecoder;
-    fn decoder() -> Self::Decoder {
-        GetBlocksMessageDecoder(Decoder3::new(
-            ProtocolVersionDecoder::new(),
-            BlockLocatorDecoder::new(),
-            BlockHashDecoder::new(),
-        ))
-    }
 }
 
 impl encoding::Decode for GetHeadersMessage {
     type Decoder = GetHeadersMessageDecoder;
-    fn decoder() -> Self::Decoder {
-        GetHeadersMessageDecoder(Decoder3::new(
-            ProtocolVersionDecoder::new(),
-            BlockLocatorDecoder::new(),
-            BlockHashDecoder::new(),
-        ))
-    }
 }
 
 /// Error types for blockdata messages.

@@ -131,9 +131,6 @@ impl encoding::Encode for BlockTime {
 #[cfg(feature = "encoding")]
 impl encoding::Decode for BlockTime {
     type Decoder = BlockTimeDecoder;
-
-    #[inline]
-    fn decoder() -> Self::Decoder { BlockTimeDecoder(encoding::ArrayDecoder::<4>::new()) }
 }
 
 #[cfg(feature = "encoding")]

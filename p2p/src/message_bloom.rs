@@ -67,7 +67,7 @@ type FilterLoadInnerDecoder =
     Decoder4<ByteVecDecoder, ArrayDecoder<4>, ArrayDecoder<4>, BloomFlagsDecoder>;
 
 /// The decoder for the [`FilterLoad`] message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct FilterLoadDecoder(FilterLoadInnerDecoder);
 
 impl encoding::Decoder for FilterLoadDecoder {
@@ -96,15 +96,6 @@ impl encoding::Decoder for FilterLoadDecoder {
 
 impl encoding::Decode for FilterLoad {
     type Decoder = FilterLoadDecoder;
-
-    fn decoder() -> Self::Decoder {
-        FilterLoadDecoder(Decoder4::new(
-            ByteVecDecoder::new(),
-            ArrayDecoder::new(),
-            ArrayDecoder::new(),
-            BloomFlags::decoder(),
-        ))
-    }
 }
 
 /// Bloom filter update flags
@@ -139,7 +130,7 @@ impl encoding::Encode for BloomFlags {
 type BloomFlagsInnerDecoder = ArrayDecoder<1>;
 
 /// The decoder for [`BloomFlags`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct BloomFlagsDecoder(BloomFlagsInnerDecoder);
 
 impl BloomFlagsDecoder {
@@ -177,8 +168,6 @@ impl encoding::Decoder for BloomFlagsDecoder {
 
 impl encoding::Decode for BloomFlags {
     type Decoder = BloomFlagsDecoder;
-
-    fn decoder() -> Self::Decoder { BloomFlagsDecoder(ArrayDecoder::new()) }
 }
 
 /// `filteradd` message updates the current filter with new data
@@ -208,7 +197,7 @@ impl encoding::Encode for FilterAdd {
 type FilterAddInnerDecoder = ByteVecDecoder;
 
 /// The decoder for the [`FilterAdd`] message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct FilterAddDecoder(FilterAddInnerDecoder);
 
 impl encoding::Decoder for FilterAddDecoder {
@@ -232,8 +221,6 @@ impl encoding::Decoder for FilterAddDecoder {
 
 impl encoding::Decode for FilterAdd {
     type Decoder = FilterAddDecoder;
-
-    fn decoder() -> Self::Decoder { FilterAddDecoder(FilterAddInnerDecoder::new()) }
 }
 
 /// Error types for bloom filter messages.

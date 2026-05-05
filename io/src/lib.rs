@@ -806,9 +806,9 @@ mod tests {
 
     impl Decode for TestArray {
         type Decoder = TestArrayDecoder;
-        fn decoder() -> Self::Decoder { TestArrayDecoder { inner: ArrayDecoder::new() } }
     }
 
+    #[derive(Default)]
     struct TestArrayDecoder {
         inner: ArrayDecoder<4>,
     }
