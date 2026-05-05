@@ -93,7 +93,7 @@ mod encapsulate {
 
         /// Returns the inner secp256k1 x-only public key.
         #[inline]
-        #[deprecated(since = "TBD", note = "use `to_inner()` instead")]
+        #[deprecated(since = "0.1.0", note = "use `to_inner()` instead")]
         pub fn into_inner(self) -> secp256k1::XOnlyPublicKey { self.to_inner() }
     }
 
@@ -597,12 +597,12 @@ impl<'a> From<&'a TweakedKeypair> for &'a Keypair {
 
 impl LegacyPublicKey {
     /// Constructs a new compressed ECDSA public key from the provided generic secp256k1 public key.
-    #[deprecated(since = "TBD", note = "use `from_secp` instead")]
+    #[deprecated(since = "0.1.0", note = "use `from_secp` instead")]
     pub fn new(key: impl Into<secp256k1::PublicKey>) -> Self { Self::from_secp(key) }
 
     /// Constructs a new uncompressed (legacy) ECDSA public key from the provided generic secp256k1
     /// public key.
-    #[deprecated(since = "TBD", note = "use `from_secp_uncompressed` instead")]
+    #[deprecated(since = "0.1.0", note = "use `from_secp_uncompressed` instead")]
     pub fn new_uncompressed(key: impl Into<secp256k1::PublicKey>) -> Self {
         Self::from_secp_uncompressed(key)
     }
@@ -897,7 +897,7 @@ impl FullPublicKey {
     ///
     /// See [`secp256k1::PublicKey::from_slice`].
     #[deprecated(
-        since = "TBD",
+        since = "0.1.0",
         note = "use `from_bytes` instead; if you only have a slice, use `<&[u8; 33]>::try_from` first"
     )]
     #[inline]
@@ -1019,12 +1019,12 @@ impl PrivateKey {
     }
 
     /// Constructs a new public key from this private key.
-    #[deprecated(since = "TBD", note = "use `to_legacy_public_key` instead")]
+    #[deprecated(since = "0.1.0", note = "use `to_legacy_public_key` instead")]
     #[inline]
     pub fn public_key(&self) -> LegacyPublicKey { self.to_legacy_public_key() }
 
     /// Serializes the private key to bytes.
-    #[deprecated(since = "TBD", note = "use to_secret_vec instead")]
+    #[deprecated(since = "0.1.0", note = "use to_secret_vec instead")]
     #[cfg(feature = "alloc")]
     #[inline]
     pub fn to_bytes(&self) -> Vec<u8> { self.to_secret_vec() }
@@ -1057,7 +1057,7 @@ impl PrivateKey {
     /// See [`from_secret_bytes`] for other errors.
     ///
     /// [`from_secret_bytes`]: PrivateKey::from_secret_bytes
-    #[deprecated(since = "TBD", note = "use from_secret_bytes instead")]
+    #[deprecated(since = "0.1.0", note = "use from_secret_bytes instead")]
     #[inline]
     pub fn from_slice(
         data: &[u8],
