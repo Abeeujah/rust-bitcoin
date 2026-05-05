@@ -42,7 +42,7 @@ fn main() {
 
     let remote_socket: SocketAddr = SocketAddr::new(IpAddr::V4(ip), port);
     let version_message = build_version_message(remote_socket);
-    let version_message = message::V1NetworkMessage::new(Magic::REGTEST, version_message);
+    let version_message = message::V1NetworkMessage::new(magic, version_message);
 
     if let Ok(mut stream) = TcpStream::connect(remote_socket) {
         encoding::encode_to_writer(&version_message, &mut stream).unwrap();
