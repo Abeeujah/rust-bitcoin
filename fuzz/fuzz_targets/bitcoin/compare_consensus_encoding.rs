@@ -54,6 +54,8 @@ fn is_known_decoder_divergence(err: &(dyn std::error::Error + 'static)) -> bool 
             s == "transaction has no outputs"
                 || s.starts_with("sum of output values ")
                 || s.starts_with("duplicate input")
+                || s.starts_with("null prevout in non-coinbase transaction")
+                || s.starts_with("coinbase scriptSig too")
         }) {
             return true;
         }
@@ -104,22 +106,31 @@ fn read_compact_size(data: &mut &[u8]) -> Option<u64> {
     decoder.end().ok()
 }
 
-/// Returns `true` if `data`, interpreted as an `AddrV2Message`, contains a TorV2 (network_id 0x03) address.
+/// Returns `true` if `data`, interpreted as an `AddrV2Message`, should be skipped.
 ///
 /// `AddrV2Message` is encoded as: `time(u32) || services(compact-size u64) || AddrV2`.
 /// The AddrV2 network_id follows the variable-length services field, so a fixed offset check is wrong.
-fn addrv2_message_has_torv2(data: &[u8]) -> bool {
+///
+/// Skips if:
+/// - The AddrV2 network_id is 0x03 (TorV2), which was removed in bitcoin 0.33+.
+/// - The services field is greater than 0x0200_0000, which the old decoder does not support.
+fn addrv2_message_should_skip(data: &[u8]) -> bool {
     (|| -> Option<bool> {
         let mut rest = data.get(4..)?; // skip time (u32 LE, 4 bytes)
-        read_compact_size(&mut rest)?; // skip services (compact-size u64)
-        Some(*rest.first()? == 0x03) // check AddrV2 network_id byte
+        let services = read_compact_size(&mut rest)?; // read services (compact-size u64)
+        let network_id = *rest.first()?; // check AddrV2 network_id byte
+        Some(network_id == 0x03 || services > 0x0200_0000)
     })()
     .unwrap_or(false)
 }
 
 /// Returns `true` if `data`, interpreted as an `AddrV2Payload` (`Vec<AddrV2Message>`),
-/// contains any TorV2 (network_id 0x03) address.
-fn addrv2_payload_has_torv2(data: &[u8]) -> bool {
+/// contains any message that should be skipped.
+///
+/// Skips if any message has:
+/// - A TorV2 (network_id 0x03) address, which was removed in bitcoin 0.33+.
+/// - A services field greater than 0x0200_0000, which the old decoder does not support.
+fn addrv2_payload_should_skip(data: &[u8]) -> bool {
     (|| -> Option<bool> {
         let mut rest = data;
         let count = read_compact_size(&mut rest)?;
@@ -130,6 +141,9 @@ fn addrv2_payload_has_torv2(data: &[u8]) -> bool {
                 if addr_type == 0x03 {
                     return Some(true);
                 }
+            }
+            if message.services.to_u64() > 0x0200_0000 {
+                return Some(true);
             }
         }
         Some(false)
@@ -202,14 +216,15 @@ fn do_test(data: &[u8]) {
 
     // TorV2 (network_id 0x03) was removed from AddrV2 in bitcoin 0.33+. Bitcoin 0.32 decodes TorV2
     // as a distinct variant whose encoding differs from the new crate's AddrV2::Unknown(3, ...).
-    // Skip inputs that would be decoded as TorV2 to avoid a false encoding mismatch.
+    // ServiceFlags > 0x0200_0000 are not supported by the old decoder.
+    // Skip inputs that would trigger either known divergence.
     if data.first() != Some(&0x03) {
         compare_encoding!(data, p2p::address::AddrV2, old_bitcoin::p2p::address::AddrV2);
     }
-    if !addrv2_message_has_torv2(data) {
+    if !addrv2_message_should_skip(data) {
         compare_encoding!(data, p2p::address::AddrV2Message, old_bitcoin::p2p::address::AddrV2Message);
     }
-    if !addrv2_payload_has_torv2(data) {
+    if !addrv2_payload_should_skip(data) {
         compare_encoding!(data, p2p::message::AddrV2Payload, Vec<old_bitcoin::p2p::address::AddrV2Message>);
     }
     // Inventory::Error (type_id=0) encodes differently between old/new bitcoin: old omits the
