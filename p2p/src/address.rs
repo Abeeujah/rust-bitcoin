@@ -516,9 +516,10 @@ impl AddrV2Decoder {
     fn to_fixed_size_slice<const N: usize>(
         addr_bytes: Vec<u8>,
     ) -> Result<[u8; N], AddrV2DecoderError> {
-        Ok(addr_bytes.try_into().map_err(|e: Vec<u8>| {
-            AddrV2DecoderError::InvalidAddressLength { expected: N, got: e.len() }
-        })?)
+        addr_bytes.try_into().map_err(|e: Vec<u8>| AddrV2DecoderError::InvalidAddressLength {
+            expected: N,
+            got: e.len(),
+        })
     }
 }
 

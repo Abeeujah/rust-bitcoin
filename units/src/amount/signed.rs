@@ -141,8 +141,7 @@ impl SignedAmount {
                 is_greater_than_max: true,
             }))
         })?;
-        Ok(Self::from_sat(amount)
-            .map_err(|e| ParseAmountError(ParseAmountErrorInner::OutOfRange(e)))?)
+        Self::from_sat(amount).map_err(|e| ParseAmountError(ParseAmountErrorInner::OutOfRange(e)))
     }
 
     /// Converts from a value expressing a decimal number of bitcoin to a [`SignedAmount`].
