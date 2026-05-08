@@ -20,7 +20,7 @@ use encoding::{
 use hashes::{sha256d, HashEngine};
 use primitives::block::{self, HeaderDecoder, HeaderEncoder};
 use primitives::transaction;
-use units::FeeRate;
+use units::{Amount, FeeRate};
 
 use self::error::V1NetworkMessageDecoderErrorInner;
 use crate::address::{AddrV1Message, AddrV2Message};
@@ -34,8 +34,8 @@ use crate::{
 #[doc(no_inline)]
 pub use self::error::{
     AddrPayloadDecoderError, AddrV2PayloadDecoderError, CommandStringDecoderError,
-    CommandStringError, HeadersMessageDecoderError, InventoryPayloadDecoderError,
-    NetworkHeaderDecoderError, PingDecoderError, PongDecoderError,
+    CommandStringError, FeeFilterDecoderError, HeadersMessageDecoderError,
+    InventoryPayloadDecoderError, NetworkHeaderDecoderError, PingDecoderError, PongDecoderError,
     V1MessageHeaderDecoderError, V1NetworkMessageDecoderError, V2NetworkMessageDecoderError
 };
 
@@ -516,21 +516,31 @@ impl Default for FeeFilterDecoder {
 
 impl encoding::Decoder for FeeFilterDecoder {
     type Output = FeeFilter;
-    type Error = encoding::UnexpectedEofError;
+    type Error = FeeFilterDecoderError;
 
     fn push_bytes(&mut self, bytes: &mut &[u8]) -> Result<bool, Self::Error> {
-        self.0.push_bytes(bytes)
+        self.0.push_bytes(bytes).map_err(FeeFilterDecoderError::UnexpectedEof)
     }
 
     fn end(self) -> Result<Self::Output, Self::Error> {
-        let array = self.0.end()?;
+        let array = self.0.end().map_err(FeeFilterDecoderError::UnexpectedEof)?;
         let kvb = u64::from_le_bytes(array);
 
         // BIP-0133 specifies feefilter as int64_t (signed), but negative values and values
-        // exceeding u32::MAX are invalid for fee rates. We saturate both cases to FeeRate::MAX.
-        let fee_rate = kvb.try_into().ok().map_or(FeeRate::MAX, FeeRate::from_sat_per_kvb);
+        // exceeding Amount::MAX_MONEY are invalid for fee rates.
+        // https://github.com/bitcoin/bitcoin/blob/8396b7f2a3be4be7bb2ffc152f87b4cab95dd84e/src/net_processing.cpp#L4984
+        if kvb > Amount::MAX_MONEY.to_sat() {
+            Err(FeeFilterDecoderError::InvalidFeeRate(kvb))
+        } else {
+            // We can't directly construct using kvb with any public constructors on FeeRate
+            // because the rate can be up to Amount::MAX_MONEY which overflows all of them.
+            // Instead, we construct a 1 sat/kvb and multiply by our kvb.
+            let fee_rate = FeeRate::from_sat_per_kvb(1)
+                .checked_mul(kvb)
+                .expect("Amount::MAX_MONEY * 1000 < u64::MAX");
 
-        Ok(FeeFilter(fee_rate))
+            Ok(FeeFilter(fee_rate))
+        }
     }
 
     fn read_limit(&self) -> usize { self.0.read_limit() }
@@ -2104,6 +2114,46 @@ pub mod error {
         fn source(&self) -> Option<&(dyn std::error::Error + 'static)> { Some(&self.0) }
     }
 
+    /// An error consensus decoding a [`FeeFilter`].
+    ///
+    /// [`FeeFilter`]: super::FeeFilter
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    #[non_exhaustive]
+    pub enum FeeFilterDecoderError {
+        /// Unexpected end of data.
+        UnexpectedEof(encoding::UnexpectedEofError),
+        /// Fee rate value is out of valid range (must be in the range 0 to [`Amount::MAX_MONEY`]).
+        ///
+        /// If an error of this variant is thrown while decoding a `V1NetworkMessage`, the message
+        /// should be ignored.
+        ///
+        /// [`Amount::MAX_MONEY`]: units::Amount::MAX_MONEY
+        InvalidFeeRate(u64),
+    }
+
+    impl From<Infallible> for FeeFilterDecoderError {
+        fn from(never: Infallible) -> Self { match never {} }
+    }
+
+    impl fmt::Display for FeeFilterDecoderError {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                Self::UnexpectedEof(e) => write_err!(f, "feefilter decoder error"; e),
+                Self::InvalidFeeRate(v) => write!(f, "invalid fee rate value {}", v),
+            }
+        }
+    }
+
+    #[cfg(feature = "std")]
+    impl std::error::Error for FeeFilterDecoderError {
+        fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+            match self {
+                Self::UnexpectedEof(e) => Some(e),
+                Self::InvalidFeeRate(_) => None,
+            }
+        }
+    }
+
     /// Error decoding a raw network message.
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct V1NetworkMessageDecoderError(pub(super) V1NetworkMessageDecoderErrorInner);
@@ -2837,6 +2887,35 @@ mod test {
 
         let enc = encoding::encode_to_vec(&decoded);
         assert_eq!(data.as_slice(), enc.as_slice());
+    }
+
+    #[test]
+    fn fee_filter_decode_edge_cases() {
+        let max_money = units::Amount::MAX_MONEY.to_sat();
+
+        // 0 to Amount::MAX_MONEY is valid
+        let bytes = 0u64.to_le_bytes();
+        assert_eq!(
+            encoding::decode_from_slice::<FeeFilter>(&bytes).unwrap(),
+            FeeFilter(FeeRate::ZERO)
+        );
+        let bytes = max_money.to_le_bytes();
+        let max_feerate = FeeFilter(
+            FeeRate::from_sat_per_kvb(1).checked_mul(Amount::MAX_MONEY.to_sat()).unwrap(),
+        );
+        assert_eq!(encoding::decode_from_slice::<FeeFilter>(&bytes).unwrap(), max_feerate);
+
+        // Invalid cases
+        let bytes = (max_money + 1).to_le_bytes();
+        assert!(matches!(
+            encoding::decode_from_slice::<FeeFilter>(&bytes).unwrap_err(),
+            encoding::DecodeError::Parse(FeeFilterDecoderError::InvalidFeeRate(_)),
+        ));
+        let bytes = u64::MAX.to_le_bytes();
+        assert!(matches!(
+            encoding::decode_from_slice::<FeeFilter>(&bytes).unwrap_err(),
+            encoding::DecodeError::Parse(FeeFilterDecoderError::InvalidFeeRate(_)),
+        ));
     }
 
     #[test]

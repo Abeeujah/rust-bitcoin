@@ -534,6 +534,12 @@ impl encoding::Decoder for AddrV2Decoder {
     #[inline]
     fn end(self) -> Result<Self::Output, Self::Error> {
         let (net_type, addr_bytes) = self.0.end().map_err(AddrV2DecoderError::Decoder)?;
+        if addr_bytes.len() > 512 {
+            return Err(AddrV2DecoderError::InvalidAddressLength {
+                expected: 512,
+                got: addr_bytes.len(),
+            });
+        }
         match u8::from_le_bytes(net_type) {
             1 => {
                 let octets = Self::to_fixed_size_slice::<4>(addr_bytes)?;
