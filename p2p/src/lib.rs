@@ -423,8 +423,7 @@ impl TryFrom<Magic> for Network {
 
 impl fmt::Display for Magic {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        hex_unstable::fmt_hex_exact!(f, 4, &self.0, hex_unstable::Case::Lower)?;
-        Ok(())
+        fmt::LowerHex::fmt(self, f)
     }
 }
 
