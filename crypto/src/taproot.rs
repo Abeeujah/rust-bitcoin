@@ -14,8 +14,6 @@ use core::str::FromStr;
 use arbitrary::{Arbitrary, Unstructured};
 use internals::array::ArrayExt;
 use internals::impl_to_hex_from_lower_hex;
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 
 pub use self::into_iter::IntoIter;
 use crate::hex;
@@ -29,7 +27,7 @@ const MAX_LEN: usize = 65; // 64 for sig, 1B sighash flag
 
 /// A BIP-0340-0341 serialized Taproot signature with the corresponding hash type.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Signature {
     /// The underlying schnorr signature.
     pub signature: secp256k1::schnorr::Signature,
@@ -98,12 +96,19 @@ impl Signature {
 
 impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.sighash_type == TapSighashType::Default {
-            // default sighash type, don't add extra sighash byte
-            hex_unstable::fmt_hex_exact!(f, 64, (*self).serialize(), hex_unstable::Case::Lower)
-        } else {
-            hex_unstable::fmt_hex_exact!(f, 65, (*self).serialize(), hex_unstable::Case::Lower)
-        }
+        fmt::Display::fmt(&self.serialize(), f)
+    }
+}
+
+impl fmt::LowerHex for Signature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::LowerHex::fmt(&self.serialize(), f)
+    }
+}
+
+impl fmt::UpperHex for Signature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::UpperHex::fmt(&self.serialize(), f)
     }
 }
 
