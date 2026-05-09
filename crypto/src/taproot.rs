@@ -535,18 +535,19 @@ mod tests {
         }
     }
 
+    const SIG_STRINGS: &[&str] = &[
+        // default sighash type
+        "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab",
+        // various sighash types
+        "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab01",
+        "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab02",
+        "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab03",
+        "7777777777777777abababababababababababababababababababababababababababababababababababababababababababababababababababababababab81",
+    ];
+
     #[test]
     fn signature_hex_roundtrip() {
-        let sig_strings = [
-            // default sighash type
-            "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab",
-            // various sighash types
-            "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab01",
-            "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab02",
-            "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab03",
-            "7777777777777777abababababababababababababababababababababababababababababababababababababababababababababababababababababababab81",
-        ];
-        for want in sig_strings {
+        for &want in SIG_STRINGS {
             let sig = want.parse::<Signature>().unwrap();
             let got = sig.to_string();
             assert_eq!(got, want);
@@ -561,5 +562,14 @@ mod tests {
             parse_err,
             ParseSignatureError::Decode(SigFromSliceError::SighashType(InvalidSighashTypeError(0))),
         ));
+    }
+
+    #[test]
+    fn serialized_signature_hex() {
+        for &want in SIG_STRINGS {
+            let sig = want.parse::<Signature>().unwrap();
+            let got = sig.serialize().to_string();
+            assert_eq!(got, want);
+        }
     }
 }
