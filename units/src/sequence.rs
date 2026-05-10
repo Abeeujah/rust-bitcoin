@@ -421,11 +421,11 @@ mod tests {
 
     #[test]
     fn sequence_number() {
-        let seq_final = Sequence::from_consensus(0xFFFFFFFF);
-        let seq_non_rbf = Sequence::from_consensus(0xFFFFFFFE);
+        let seq_final = Sequence::from_consensus(0xFFFF_FFFF);
+        let seq_non_rbf = Sequence::from_consensus(0xFFFF_FFFE);
         let block_time_lock = Sequence::from_consensus(0xFFFF);
-        let unit_time_lock = Sequence::from_consensus(0x40FFFF);
-        let lock_time_disabled = Sequence::from_consensus(0x80000000);
+        let unit_time_lock = Sequence::from_consensus(0x40_FFFF);
+        let lock_time_disabled = Sequence::from_consensus(0x8000_0000);
 
         assert!(seq_final.is_final());
         assert!(!seq_final.is_rbf());

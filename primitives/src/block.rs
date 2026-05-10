@@ -1063,7 +1063,7 @@ mod tests {
     #[test]
     fn soft_fork_signalling() {
         for i in 0..31 {
-            let version_int = (0x20000000u32 ^ (1 << i)) as i32;
+            let version_int = (0x2000_0000u32 ^ (1 << i)) as i32;
             let version = Version::from_consensus(version_int);
             if i < 29 {
                 assert!(version.is_signalling_soft_fork(i));
@@ -1072,7 +1072,7 @@ mod tests {
             }
         }
 
-        let segwit_signal = Version::from_consensus(0x20000000 ^ (1 << 1));
+        let segwit_signal = Version::from_consensus(0x2000_0000 ^ (1 << 1));
         assert!(!segwit_signal.is_signalling_soft_fork(0));
         assert!(segwit_signal.is_signalling_soft_fork(1));
         assert!(!segwit_signal.is_signalling_soft_fork(2));
@@ -2034,13 +2034,13 @@ mod tests {
         assert!(decode.is_ok());
 
         let real_decode = decode.unwrap().assume_checked(None);
-        assert_eq!(real_decode.header().version, Version::from_consensus(2147483647));
+        assert_eq!(real_decode.header().version, Version::from_consensus(2_147_483_647));
 
         let block2 = hex!("000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
         let decode2: Result<Block<Unchecked>, _> = encoding::decode_from_slice(&block2);
         assert!(decode2.is_ok());
         let real_decode2 = decode2.unwrap().assume_checked(None);
-        assert_eq!(real_decode2.header().version, Version::from_consensus(-2147483648));
+        assert_eq!(real_decode2.header().version, Version::from_consensus(-2_147_483_648));
     }
 
     #[test]
@@ -2056,7 +2056,7 @@ mod tests {
         let block = Block::new_unchecked(header, transactions).assume_checked(None);
 
         // Same as `block.check_merkle_root` but do it explicitly.
-        let hashes_iter = block.transactions().iter().map(|obj| obj.compute_txid());
+        let hashes_iter = block.transactions().iter().map(Transaction::compute_txid);
         let from_iter = TxMerkleNode::calculate_root(hashes_iter.clone());
         assert_eq!(from_iter, Some(block.header().merkle_root));
     }
