@@ -308,9 +308,7 @@ impl HashEngine {
                 && std::is_x86_feature_detected!("sse2")
                 && std::is_x86_feature_detected!("ssse3")
             {
-                for block in blocks.chunks_exact(BLOCK_SIZE) {
-                    unsafe { x86_shani::process_block(state, block) };
-                }
+                unsafe { x86_shani::process_blocks(state, blocks) };
                 return;
             }
         }
@@ -319,9 +317,7 @@ impl HashEngine {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         {
             if cpuid_sha256_x86::get() {
-                for block in blocks.chunks_exact(BLOCK_SIZE) {
-                    unsafe { x86_shani::process_block(state, block) };
-                }
+                unsafe { x86_shani::process_blocks(state, blocks) };
                 return;
             }
         }
@@ -330,9 +326,7 @@ impl HashEngine {
         #[cfg(target_arch = "aarch64")]
         {
             if std::arch::is_aarch64_feature_detected!("sha2") {
-                for block in blocks.chunks_exact(BLOCK_SIZE) {
-                    unsafe { arm_sha2::process_block(state, block) };
-                }
+                unsafe { arm_sha2::process_blocks(state, blocks) };
                 return;
             }
         }
@@ -341,9 +335,7 @@ impl HashEngine {
         #[cfg(target_arch = "aarch64")]
         {
             if cpuid_sha256_aarch64::get() {
-                for block in blocks.chunks_exact(BLOCK_SIZE) {
-                    unsafe { arm_sha2::process_block(state, block) };
-                }
+                unsafe { arm_sha2::process_blocks(state, blocks) };
                 return;
             }
         }
