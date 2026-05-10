@@ -383,9 +383,7 @@ enum Decoder2State<A: Decoder, B: Decoder> {
 
 // the `#[default]` attribute may only be used on unit enum variants
 impl<A: Decoder + Default, B: Decoder + Default> Default for Decoder2State<A, B> {
-    fn default() -> Self {
-        Self::First(A::default(), B::default())
-    }
+    fn default() -> Self { Self::First(A::default(), B::default()) }
 }
 
 impl<A, B> Decoder2<A, B>

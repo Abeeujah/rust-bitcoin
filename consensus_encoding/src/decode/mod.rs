@@ -46,9 +46,7 @@ pub trait Decode {
     type Decoder: Decoder<Output = Self> + Default;
 
     /// Constructs a "default decoder" for the type.
-    fn decoder() -> Self::Decoder {
-        Self::Decoder::default()
-    }
+    fn decoder() -> Self::Decoder { Self::Decoder::default() }
 }
 
 /// A push decoder for a consensus-decodable object.
