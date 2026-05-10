@@ -1811,6 +1811,76 @@ mod tests {
 
     #[test]
     #[cfg(feature = "hex")]
+    #[cfg(feature = "alloc")]
+    fn outpoint() {
+        assert_eq!("i don't care".parse::<OutPoint>(), Err(ParseOutPointError::Format));
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:1:1"
+                .parse::<OutPoint>(),
+            Err(ParseOutPointError::Format)
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:".parse::<OutPoint>(),
+            Err(ParseOutPointError::Format)
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:11111111111"
+                .parse::<OutPoint>(),
+            Err(ParseOutPointError::TooLong)
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:01"
+                .parse::<OutPoint>(),
+            Err(ParseOutPointError::VoutNotCanonical)
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:+42"
+                .parse::<OutPoint>(),
+            Err(ParseOutPointError::VoutNotCanonical)
+        );
+        assert_eq!(
+            "i don't care:1".parse::<OutPoint>(),
+            Err(ParseOutPointError::Txid("i don't care".parse::<Txid>().unwrap_err()))
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c945X:1"
+                .parse::<OutPoint>(),
+            Err(ParseOutPointError::Txid(
+                "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c945X"
+                    .parse::<Txid>()
+                    .unwrap_err()
+            ))
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:lol"
+                .parse::<OutPoint>(),
+            Err(ParseOutPointError::Vout(parse_int::int_from_str::<u32>("lol").unwrap_err()))
+        );
+
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:42"
+                .parse::<OutPoint>(),
+            Ok(OutPoint {
+                txid: "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456"
+                    .parse()
+                    .unwrap(),
+                vout: 42,
+            })
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:0"
+                .parse::<OutPoint>(),
+            Ok(OutPoint {
+                txid: "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456"
+                    .parse()
+                    .unwrap(),
+                vout: 0,
+            })
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "hex")]
     fn canonical_vout() {
         assert_eq!(parse_vout("0").unwrap(), 0);
         assert_eq!(parse_vout("1").unwrap(), 1);
@@ -1825,6 +1895,38 @@ mod tests {
         let outpoint_str = "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20:1";
         let outpoint: OutPoint = outpoint_str.parse().unwrap();
         assert_eq!(format!("{}", outpoint), outpoint_str);
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    #[cfg(feature = "hex")]
+    fn outpoint_format() {
+        let outpoint = OutPoint::COINBASE_PREVOUT;
+
+        let debug = "OutPoint { txid: Txid(bitcoin_hashes::sha256d::Hash(0000000000000000000000000000000000000000000000000000000000000000)), vout: 4294967295 }";
+        assert_eq!(debug, format!("{:?}", &outpoint));
+
+        let display = "0000000000000000000000000000000000000000000000000000000000000000:4294967295";
+        assert_eq!(display, format!("{}", &outpoint));
+
+        let pretty_debug = "OutPoint {
+    txid: Txid(
+        bitcoin_hashes::sha256d::Hash(
+            0x0000000000000000000000000000000000000000000000000000000000000000,
+        ),
+    ),
+    vout: 4294967295,
+}";
+        assert_eq!(pretty_debug, format!("{:#?}", &outpoint));
+
+        let debug_txid = "Txid(bitcoin_hashes::sha256d::Hash(0000000000000000000000000000000000000000000000000000000000000000))";
+        assert_eq!(debug_txid, format!("{:?}", &outpoint.txid));
+
+        let display_txid = "0000000000000000000000000000000000000000000000000000000000000000";
+        assert_eq!(display_txid, format!("{}", &outpoint.txid));
+
+        let pretty_txid = "0x0000000000000000000000000000000000000000000000000000000000000000";
+        assert_eq!(pretty_txid, format!("{:#}", &outpoint.txid));
     }
 
     #[test]

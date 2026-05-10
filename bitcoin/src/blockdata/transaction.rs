@@ -1307,8 +1307,8 @@ mod tests {
     use super::*;
     use crate::consensus::encode::{deserialize, serialize};
     use crate::constants::WITNESS_SCALE_FACTOR;
+    use crate::hex;
     use crate::script::ScriptSigBuf;
-    use crate::{hex, parse_int};
 
     const SOME_TX: &str = "0100000001a15d57094aa7a21a28cb20b59aab8fc7d1149a3bdbcddba9c622e4f5f6a99ece010000006c493046022100f93bb0e7d8db7bd46e40132d1f8242026e045f03a0efe71bbb8e3f475e970d790221009337cd7f1f929f00cc6ff01f03729b069a7c21b59b1736ddfee5db5946c5da8c0121033b9b137ee87d5a812d6f506efdd37f0affa7ffc310711c06c7f3e097c9447c52ffffffff0100e1f505000000001976a9140389035a9225b3839e2bbf32d826a1e222031fd888ac00000000";
 
@@ -1321,74 +1321,6 @@ mod tests {
         let size = tx.consensus_encode(&mut &mut buf[..]).unwrap();
         assert_eq!(size, SOME_TX.len() / 2);
         assert_eq!(raw_tx, &buf[..size]);
-    }
-
-    #[test]
-    fn outpoint() {
-        assert_eq!("i don't care".parse::<OutPoint>(), Err(ParseOutPointError::Format));
-        assert_eq!(
-            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:1:1"
-                .parse::<OutPoint>(),
-            Err(ParseOutPointError::Format)
-        );
-        assert_eq!(
-            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:".parse::<OutPoint>(),
-            Err(ParseOutPointError::Format)
-        );
-        assert_eq!(
-            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:11111111111"
-                .parse::<OutPoint>(),
-            Err(ParseOutPointError::TooLong)
-        );
-        assert_eq!(
-            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:01"
-                .parse::<OutPoint>(),
-            Err(ParseOutPointError::VoutNotCanonical)
-        );
-        assert_eq!(
-            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:+42"
-                .parse::<OutPoint>(),
-            Err(ParseOutPointError::VoutNotCanonical)
-        );
-        assert_eq!(
-            "i don't care:1".parse::<OutPoint>(),
-            Err(ParseOutPointError::Txid("i don't care".parse::<Txid>().unwrap_err()))
-        );
-        assert_eq!(
-            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c945X:1"
-                .parse::<OutPoint>(),
-            Err(ParseOutPointError::Txid(
-                "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c945X"
-                    .parse::<Txid>()
-                    .unwrap_err()
-            ))
-        );
-        assert_eq!(
-            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:lol"
-                .parse::<OutPoint>(),
-            Err(ParseOutPointError::Vout(parse_int::int_from_str::<u32>("lol").unwrap_err()))
-        );
-
-        assert_eq!(
-            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:42"
-                .parse::<OutPoint>(),
-            Ok(OutPoint {
-                txid: "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456"
-                    .parse()
-                    .unwrap(),
-                vout: 42,
-            })
-        );
-        assert_eq!(
-            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:0"
-                .parse::<OutPoint>(),
-            Ok(OutPoint {
-                txid: "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456"
-                    .parse()
-                    .unwrap(),
-                vout: 0,
-            })
-        );
     }
 
     #[test]
@@ -1702,58 +1634,6 @@ mod tests {
             TxVerifyError::ScriptVerification(_) => {}
             _ => panic!("wrong error type"),
         }
-    }
-
-    #[test]
-    fn sequence_number() {
-        let seq_final = Sequence::from_consensus(0xFFFFFFFF);
-        let seq_non_rbf = Sequence::from_consensus(0xFFFFFFFE);
-        let block_time_lock = Sequence::from_consensus(0xFFFF);
-        let unit_time_lock = Sequence::from_consensus(0x40FFFF);
-        let lock_time_disabled = Sequence::from_consensus(0x80000000);
-
-        assert!(seq_final.is_final());
-        assert!(!seq_final.is_rbf());
-        assert!(!seq_final.is_relative_lock_time());
-        assert!(!seq_non_rbf.is_rbf());
-        assert!(block_time_lock.is_relative_lock_time());
-        assert!(block_time_lock.is_height_locked());
-        assert!(block_time_lock.is_rbf());
-        assert!(unit_time_lock.is_relative_lock_time());
-        assert!(unit_time_lock.is_time_locked());
-        assert!(unit_time_lock.is_rbf());
-        assert!(!lock_time_disabled.is_relative_lock_time());
-    }
-
-    #[test]
-    fn sequence_from_hex_lower() {
-        let sequence = Sequence::from_hex("0xffffffff").unwrap();
-        assert_eq!(sequence, Sequence::MAX);
-    }
-
-    #[test]
-    fn sequence_from_hex_upper() {
-        let sequence = Sequence::from_hex("0XFFFFFFFF").unwrap();
-        assert_eq!(sequence, Sequence::MAX);
-    }
-
-    #[test]
-    fn sequence_from_unprefixed_hex_lower() {
-        let sequence = Sequence::from_unprefixed_hex("ffffffff").unwrap();
-        assert_eq!(sequence, Sequence::MAX);
-    }
-
-    #[test]
-    fn sequence_from_unprefixed_hex_upper() {
-        let sequence = Sequence::from_unprefixed_hex("FFFFFFFF").unwrap();
-        assert_eq!(sequence, Sequence::MAX);
-    }
-
-    #[test]
-    fn sequence_from_str_hex_invalid_hex_should_err() {
-        let hex = "0xzb93";
-        let result = Sequence::from_hex(hex);
-        assert!(result.is_err());
     }
 
     #[test]
@@ -2092,37 +1972,6 @@ mod tests {
             p2tr_key_non_default_sighash.total_weight(),
             InputWeightPrediction::P2TR_KEY_NON_DEFAULT_SIGHASH.total_weight()
         );
-    }
-
-    #[test]
-
-    fn outpoint_format() {
-        let outpoint = OutPoint::COINBASE_PREVOUT;
-
-        let debug = "OutPoint { txid: Txid(bitcoin_hashes::sha256d::Hash(0000000000000000000000000000000000000000000000000000000000000000)), vout: 4294967295 }";
-        assert_eq!(debug, format!("{:?}", &outpoint));
-
-        let display = "0000000000000000000000000000000000000000000000000000000000000000:4294967295";
-        assert_eq!(display, format!("{}", &outpoint));
-
-        let pretty_debug = "OutPoint {
-    txid: Txid(
-        bitcoin_hashes::sha256d::Hash(
-            0x0000000000000000000000000000000000000000000000000000000000000000,
-        ),
-    ),
-    vout: 4294967295,
-}";
-        assert_eq!(pretty_debug, format!("{:#?}", &outpoint));
-
-        let debug_txid = "Txid(bitcoin_hashes::sha256d::Hash(0000000000000000000000000000000000000000000000000000000000000000))";
-        assert_eq!(debug_txid, format!("{:?}", &outpoint.txid));
-
-        let display_txid = "0000000000000000000000000000000000000000000000000000000000000000";
-        assert_eq!(display_txid, format!("{}", &outpoint.txid));
-
-        let pretty_txid = "0x0000000000000000000000000000000000000000000000000000000000000000";
-        assert_eq!(pretty_txid, format!("{:#}", &outpoint.txid));
     }
 
     #[test]

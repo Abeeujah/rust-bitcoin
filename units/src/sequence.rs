@@ -420,6 +420,58 @@ mod tests {
     }
 
     #[test]
+    fn sequence_number() {
+        let seq_final = Sequence::from_consensus(0xFFFFFFFF);
+        let seq_non_rbf = Sequence::from_consensus(0xFFFFFFFE);
+        let block_time_lock = Sequence::from_consensus(0xFFFF);
+        let unit_time_lock = Sequence::from_consensus(0x40FFFF);
+        let lock_time_disabled = Sequence::from_consensus(0x80000000);
+
+        assert!(seq_final.is_final());
+        assert!(!seq_final.is_rbf());
+        assert!(!seq_final.is_relative_lock_time());
+        assert!(!seq_non_rbf.is_rbf());
+        assert!(block_time_lock.is_relative_lock_time());
+        assert!(block_time_lock.is_height_locked());
+        assert!(block_time_lock.is_rbf());
+        assert!(unit_time_lock.is_relative_lock_time());
+        assert!(unit_time_lock.is_time_locked());
+        assert!(unit_time_lock.is_rbf());
+        assert!(!lock_time_disabled.is_relative_lock_time());
+    }
+
+    #[test]
+    fn sequence_from_hex_lower() {
+        let sequence = Sequence::from_hex("0xffffffff").unwrap();
+        assert_eq!(sequence, Sequence::MAX);
+    }
+
+    #[test]
+    fn sequence_from_hex_upper() {
+        let sequence = Sequence::from_hex("0XFFFFFFFF").unwrap();
+        assert_eq!(sequence, Sequence::MAX);
+    }
+
+    #[test]
+    fn sequence_from_unprefixed_hex_lower() {
+        let sequence = Sequence::from_unprefixed_hex("ffffffff").unwrap();
+        assert_eq!(sequence, Sequence::MAX);
+    }
+
+    #[test]
+    fn sequence_from_unprefixed_hex_upper() {
+        let sequence = Sequence::from_unprefixed_hex("FFFFFFFF").unwrap();
+        assert_eq!(sequence, Sequence::MAX);
+    }
+
+    #[test]
+    fn sequence_from_str_hex_invalid_hex_should_err() {
+        let hex = "0xzb93";
+        let result = Sequence::from_hex(hex);
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn sequence_properties() {
         let seq_max = Sequence(0xFFFF_FFFF);
         let seq_no_rbf = Sequence(0xFFFF_FFFE);
