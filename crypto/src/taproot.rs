@@ -314,7 +314,7 @@ impl<'a> TryFrom<&'a SerializedSignature> for Signature {
 
 /// Separate mod to prevent outside code from accidentally breaking invariants.
 mod into_iter {
-    use super::*;
+    use super::SerializedSignature;
 
     /// Owned iterator over the bytes of [`SerializedSignature`]
     ///
