@@ -845,4 +845,3 @@ impl HashEngine {
         out_chunks[7] = h.wrapping_add(0x5be0cd19).to_be_bytes();
     }
 }
-
