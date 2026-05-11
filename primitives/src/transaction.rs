@@ -52,7 +52,8 @@ use crate::witness::{WitnessDecoder, WitnessEncoder};
 use crate::{absolute, Amount, ScriptPubKeyBuf, ScriptSigBuf, Sequence, Weight, Witness};
 
 #[rustfmt::skip]            // Keep public re-exports separate.
-#[cfg(all(feature = "hex", feature = "alloc"))]
+#[cfg(feature = "hex")]
+#[cfg(feature = "alloc")]
 #[doc(no_inline)]
 pub use self::error::{ParseTransactionError, ParseOutPointError};
 #[doc(no_inline)]
@@ -1273,9 +1274,11 @@ pub mod error {
 
     #[cfg(feature = "alloc")]
     use super::OutPoint;
-    #[cfg(all(feature = "hex", feature = "alloc"))]
+    #[cfg(feature = "hex")]
+    #[cfg(feature = "alloc")]
     use super::{parse_int, Transaction};
-    #[cfg(all(feature = "hex", feature = "alloc"))]
+    #[cfg(feature = "hex")]
+    #[cfg(feature = "alloc")]
     use crate::hex_codec::ParsePrimitiveError;
     #[cfg(feature = "alloc")]
     use crate::locktime::absolute::LockTimeDecoderError;
