@@ -197,7 +197,6 @@ name = "bitcoin-p2p-messages"
 version = "0.1.0"
 dependencies = [
  "arbitrary",
- "bitcoin 0.33.0-beta",
  "bitcoin-consensus-encoding",
  "bitcoin-internals 0.5.0",
  "bitcoin-network-kind",

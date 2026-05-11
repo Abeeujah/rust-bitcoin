@@ -64,7 +64,7 @@ impl MerkleBlock {
     ///     d3ee3738d9e1446618c4571d1090db022100e2ac980643b0b82c0e88ffdfec6b64e3e6ba35e7ba5fdd7d\
     ///     5d6cc8d25c6b241501ffffffff0100f2052a010000001976a914404371705fa9bd789a2fcd52d2c580b6\
     ///     5d35549d88ac00000000").unwrap();
-    /// let block: Block = bitcoin::consensus::deserialize(&block_bytes).unwrap();
+    /// let block: Block = encoding::decode_from_slice(&block_bytes).unwrap();
     /// let block = block.validate().expect("valid block");
     ///
     /// // Constructs a new Merkle block containing a single transaction
