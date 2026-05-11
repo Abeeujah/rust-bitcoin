@@ -36,7 +36,8 @@ use crate::{Transaction, Wtxid};
 pub use units::block::{BlockHeight, BlockHeightDecoder, BlockHeightEncoder, BlockHeightInterval, BlockMtp, BlockMtpInterval};
 
 #[rustfmt::skip]                // Keep public re-exports separate.
-#[cfg(all(feature = "hex", feature = "alloc"))]
+#[cfg(feature = "hex")]
+#[cfg(feature = "alloc")]
 #[doc(no_inline)]
 pub use self::error::ParseBlockError;
 #[cfg(feature = "hex")]
