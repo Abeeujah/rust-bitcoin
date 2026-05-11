@@ -17,9 +17,9 @@ use core::arch::x86_64::{
     _mm_shuffle_epi8, _mm_storeu_si128,
 };
 
-/// Processes a single sha256 block using x86 SHA-NI intrinsics.
+/// Processes sha256 blocks using x86 SHA-NI intrinsics.
 #[target_feature(enable = "sha,sse2,ssse3,sse4.1")]
-pub(super) unsafe fn process_block(state: &mut [u32; 8], block: &[u8]) {
+pub(super) unsafe fn process_blocks(state: &mut [u32; 8], blocks: &[u8]) {
     // Code translated and based on from
     // https://github.com/noloader/SHA-Intrinsics/blob/4899efc81d1af159c1fd955936c673139f35aea9/sha256-x86.c
 
@@ -34,13 +34,11 @@ pub(super) unsafe fn process_block(state: &mut [u32; 8], block: &[u8]) {
 
     let (mut msg0, mut msg1, mut msg2, mut msg3);
 
-    let (abef_save, cdgh_save);
+    let (mut abef_save, mut cdgh_save);
 
     #[allow(non_snake_case)]
     let MASK: __m128i =
         _mm_set_epi64x(0x0c0d_0e0f_0809_0a0bu64 as i64, 0x0405_0607_0001_0203u64 as i64);
-
-    let block_offset = 0;
 
     // Load initial values
     // CAST SAFETY: loadu_si128 documentation states that mem_addr does not
@@ -53,14 +51,14 @@ pub(super) unsafe fn process_block(state: &mut [u32; 8], block: &[u8]) {
     state0 = _mm_alignr_epi8(tmp, state1, 8); // ABEF
     state1 = _mm_blend_epi16(state1, tmp, 0xF0); // CDGH
 
-    // Process a single block
-    {
+    let mut block_offset = 0;
+    while block_offset < blocks.len() {
         // Save current state
         abef_save = state0;
         cdgh_save = state1;
 
         // Rounds 1-4
-        msg = _mm_loadu_si128(block.as_ptr().add(block_offset).cast::<__m128i>());
+        msg = _mm_loadu_si128(blocks.as_ptr().add(block_offset).cast::<__m128i>());
         msg0 = _mm_shuffle_epi8(msg, MASK);
         msg = _mm_add_epi32(
             msg0,
@@ -71,7 +69,7 @@ pub(super) unsafe fn process_block(state: &mut [u32; 8], block: &[u8]) {
         state0 = _mm_sha256rnds2_epu32(state0, state1, msg);
 
         // Rounds 5-8
-        msg1 = _mm_loadu_si128(block.as_ptr().add(block_offset + 16).cast::<__m128i>());
+        msg1 = _mm_loadu_si128(blocks.as_ptr().add(block_offset + 16).cast::<__m128i>());
         msg1 = _mm_shuffle_epi8(msg1, MASK);
         msg = _mm_add_epi32(
             msg1,
@@ -83,7 +81,7 @@ pub(super) unsafe fn process_block(state: &mut [u32; 8], block: &[u8]) {
         msg0 = _mm_sha256msg1_epu32(msg0, msg1);
 
         // Rounds 9-12
-        msg2 = _mm_loadu_si128(block.as_ptr().add(block_offset + 32).cast::<__m128i>());
+        msg2 = _mm_loadu_si128(blocks.as_ptr().add(block_offset + 32).cast::<__m128i>());
         msg2 = _mm_shuffle_epi8(msg2, MASK);
         msg = _mm_add_epi32(
             msg2,
@@ -95,7 +93,7 @@ pub(super) unsafe fn process_block(state: &mut [u32; 8], block: &[u8]) {
         msg1 = _mm_sha256msg1_epu32(msg1, msg2);
 
         // Rounds 13-16
-        msg3 = _mm_loadu_si128(block.as_ptr().add(block_offset + 48).cast::<__m128i>());
+        msg3 = _mm_loadu_si128(blocks.as_ptr().add(block_offset + 48).cast::<__m128i>());
         msg3 = _mm_shuffle_epi8(msg3, MASK);
         msg = _mm_add_epi32(
             msg3,
@@ -262,6 +260,8 @@ pub(super) unsafe fn process_block(state: &mut [u32; 8], block: &[u8]) {
         // Combine state
         state0 = _mm_add_epi32(state0, abef_save);
         state1 = _mm_add_epi32(state1, cdgh_save);
+
+        block_offset += 64;
     }
 
     tmp = _mm_shuffle_epi32(state0, 0x1B); // FEBA
