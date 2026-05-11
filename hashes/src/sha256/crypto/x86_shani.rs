@@ -276,7 +276,7 @@ pub(super) unsafe fn process_blocks(state: &mut [u32; 8], blocks: &[u8]) {
     _mm_storeu_si128(state.as_mut_ptr().add(4).cast::<__m128i>(), state1);
 }
 
-/// computes `SHA256d` of two 64-byte inputs in parallel using ARM SHA2 intrinsics.
+/// Computes `SHA256d` of two 64-byte inputs in parallel using x86 SHA-NI intrinsics.
 #[target_feature(enable = "sha,sse2,ssse3,sse4.1")]
 pub(super) unsafe fn sha256d_64_2way(output: &mut [[u8; 32]; 2], input: &[[u8; 64]; 2]) {
     // SHA256 round constants
