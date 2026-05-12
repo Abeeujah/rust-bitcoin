@@ -257,3 +257,17 @@ fn all_error_types_implement_error() {
     assert_error::<hkdf::MaxLengthError>();
     assert_error::<sha256::MidstateError>();
 }
+
+// This is for documentation and so anyone can play with these if they want.
+#[test]
+fn dyn_compatible() {
+    // use bitcoin_hashes::{sha256t, HashEngine, Hash, IsByteArray};
+
+    // struct Traits {
+    //     // These traits are explicitly not dyn compatible.
+    //     a: Box<dyn HashEngine>,
+    //     b: Box<dyn Hash>,
+    //     c: Box<dyn IsByteArray>,
+    //     d: Box<dyn sha256t::Tag>,
+    // }
+}
