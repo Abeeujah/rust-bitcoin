@@ -63,7 +63,7 @@ impl Hash {
 
     #[cfg(hashes_fuzz)]
     pub fn from_engine(e: HashEngine) -> Self {
-        let state = e.state.clone();
+        let state = e.state;
         Hash::from_u64(state.v0 ^ state.v1 ^ state.v2 ^ state.v3)
     }
 
