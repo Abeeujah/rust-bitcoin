@@ -12,11 +12,8 @@ use core::str::FromStr;
 
 #[cfg(feature = "arbitrary")]
 use arbitrary::{Arbitrary, Unstructured};
-use hex_unstable::DisplayHex as _;
 use internals::array::ArrayExt;
 use internals::impl_to_hex_from_lower_hex;
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 
 pub use self::into_iter::IntoIter;
 use crate::hex;
@@ -30,7 +27,7 @@ const MAX_LEN: usize = 65; // 64 for sig, 1B sighash flag
 
 /// A BIP-0340-0341 serialized Taproot signature with the corresponding hash type.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Signature {
     /// The underlying schnorr signature.
     pub signature: secp256k1::schnorr::Signature,
@@ -99,12 +96,19 @@ impl Signature {
 
 impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.sighash_type == TapSighashType::Default {
-            // default sighash type, don't add extra sighash byte
-            hex_unstable::fmt_hex_exact!(f, 64, (*self).serialize(), hex_unstable::Case::Lower)
-        } else {
-            hex_unstable::fmt_hex_exact!(f, 65, (*self).serialize(), hex_unstable::Case::Lower)
-        }
+        fmt::Display::fmt(&self.serialize(), f)
+    }
+}
+
+impl fmt::LowerHex for Signature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::LowerHex::fmt(&self.serialize(), f)
+    }
+}
+
+impl fmt::UpperHex for Signature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::UpperHex::fmt(&self.serialize(), f)
     }
 }
 
@@ -157,6 +161,19 @@ impl SerializedSignature {
     #[inline]
     pub fn iter(&self) -> core::slice::Iter<'_, u8> { self.into_iter() }
 
+    fn is_default(&self) -> bool {
+        self.len() != MAX_LEN
+    }
+
+    #[inline]
+    fn fmt_internal(&self, f: &mut fmt::Formatter, case: hex_unstable::Case) -> fmt::Result {
+        if self.is_default() {
+            hex_unstable::fmt_hex_exact!(f, MAX_LEN - 1, self, case)
+        } else {
+            hex_unstable::fmt_hex_exact!(f, MAX_LEN, self, case)
+        }
+    }
+
     /// Constructs new `SerializedSignature` from data and length.
     ///
     /// # Panics
@@ -179,14 +196,14 @@ impl fmt::Debug for SerializedSignature {
 
 impl fmt::Display for SerializedSignature {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        hex_unstable::fmt_hex_exact!(f, MAX_LEN, self, hex_unstable::Case::Lower)
+        fmt::LowerHex::fmt(self, f)
     }
 }
 
 impl fmt::LowerHex for SerializedSignature {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::LowerHex::fmt(&(**self).as_hex(), f)
+        self.fmt_internal(f, hex_unstable::Case::Lower)
     }
 }
 impl_to_hex_from_lower_hex!(SerializedSignature, |signature: &SerializedSignature| signature.len
@@ -195,7 +212,7 @@ impl_to_hex_from_lower_hex!(SerializedSignature, |signature: &SerializedSignatur
 impl fmt::UpperHex for SerializedSignature {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::UpperHex::fmt(&(**self).as_hex(), f)
+        self.fmt_internal(f, hex_unstable::Case::Upper)
     }
 }
 
@@ -297,7 +314,7 @@ impl<'a> TryFrom<&'a SerializedSignature> for Signature {
 
 /// Separate mod to prevent outside code from accidentally breaking invariants.
 mod into_iter {
-    use super::*;
+    use super::SerializedSignature;
 
     /// Owned iterator over the bytes of [`SerializedSignature`]
     ///
@@ -523,18 +540,19 @@ mod tests {
         }
     }
 
+    const SIG_STRINGS: &[&str] = &[
+        // default sighash type
+        "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab",
+        // various sighash types
+        "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab01",
+        "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab02",
+        "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab03",
+        "7777777777777777abababababababababababababababababababababababababababababababababababababababababababababababababababababababab81",
+    ];
+
     #[test]
     fn signature_hex_roundtrip() {
-        let sig_strings = [
-            // default sighash type
-            "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab",
-            // various sighash types
-            "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab01",
-            "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab02",
-            "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab03",
-            "7777777777777777abababababababababababababababababababababababababababababababababababababababababababababababababababababababab81",
-        ];
-        for want in sig_strings {
+        for &want in SIG_STRINGS {
             let sig = want.parse::<Signature>().unwrap();
             let got = sig.to_string();
             assert_eq!(got, want);
@@ -549,5 +567,14 @@ mod tests {
             parse_err,
             ParseSignatureError::Decode(SigFromSliceError::SighashType(InvalidSighashTypeError(0))),
         ));
+    }
+
+    #[test]
+    fn serialized_signature_hex() {
+        for &want in SIG_STRINGS {
+            let sig = want.parse::<Signature>().unwrap();
+            let got = sig.serialize().to_string();
+            assert_eq!(got, want);
+        }
     }
 }
