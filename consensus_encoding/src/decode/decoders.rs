@@ -135,11 +135,9 @@ impl Decoder for ByteVecDecoder {
     }
 
     fn read_limit(&self) -> usize {
-        if let Some(prefix_decoder) = &self.prefix_decoder {
-            prefix_decoder.read_limit()
-        } else {
-            self.bytes_expected - self.bytes_written
-        }
+        self.prefix_decoder
+            .as_ref()
+            .map_or(self.bytes_expected - self.bytes_written, CompactSizeDecoder::read_limit)
     }
 }
 
@@ -296,19 +294,16 @@ impl<T: Decode> Decoder for VecDecoder<T> {
     }
 
     fn read_limit(&self) -> usize {
-        if let Some(prefix_decoder) = &self.prefix_decoder {
-            prefix_decoder.read_limit()
-        } else if let Some(decoder) = &self.decoder {
-            decoder.read_limit()
-        } else if self.buffer.len() == self.length {
-            // Totally done.
-            0
-        } else {
-            let items_left_to_decode = self.length - self.buffer.len();
-            let decoder = T::decoder();
-            // This could be inaccurate (eg 1 for a `ByteVecDecoder`) but its the best we can do.
-            let limit_per_decoder = decoder.read_limit();
-            items_left_to_decode * limit_per_decoder
+        match (&self.prefix_decoder, &self.decoder) {
+            (Some(pd), _) => pd.read_limit(),
+            (None, Some(d)) => d.read_limit(),
+            (None, None) if self.buffer.len() == self.length => 0, // Totally done
+            (None, None) => {
+                let items_left_to_decode = self.length - self.buffer.len();
+                // This could be inaccurate (eg 1 for a `ByteVecDecoder`) but its the best we can do.
+                let limit_per_decoder = T::decoder().read_limit();
+                items_left_to_decode * limit_per_decoder
+            }
         }
     }
 }

@@ -199,7 +199,7 @@ impl<T> encoding::Decoder for ScriptBufDecoder<T> {
 
     #[inline]
     fn push_bytes(&mut self, bytes: &mut &[u8]) -> Result<bool, Self::Error> {
-        Ok(self.0.push_bytes(bytes).map_err(ScriptBufDecoderError)?)
+        self.0.push_bytes(bytes).map_err(ScriptBufDecoderError)
     }
 
     #[inline]

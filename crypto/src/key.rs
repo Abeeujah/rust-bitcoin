@@ -937,7 +937,7 @@ impl FullPublicKey {
         msg: secp256k1::Message,
         sig: ecdsa::Signature,
     ) -> Result<(), secp256k1::Error> {
-        Ok(secp256k1::ecdsa::verify(&sig.signature, msg, &self.to_inner())?)
+        secp256k1::ecdsa::verify(&sig.signature, msg, &self.to_inner())
     }
 }
 

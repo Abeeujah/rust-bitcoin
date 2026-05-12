@@ -325,11 +325,7 @@ impl LockTime {
     /// ```
     #[inline]
     pub fn is_implied_by_sequence(self, other: Sequence) -> bool {
-        if let Ok(other) = Self::from_sequence(other) {
-            self.is_implied_by(other)
-        } else {
-            false
-        }
+        Self::from_sequence(other).is_ok_and(|other| self.is_implied_by(other))
     }
 }
 
@@ -620,14 +616,10 @@ impl NumberOf512Seconds {
         chain_tip: crate::BlockMtp,
         utxo_mined_at: crate::BlockMtp,
     ) -> Result<bool, InvalidTimeError> {
-        match chain_tip.checked_sub(utxo_mined_at) {
-            Some(diff) => {
-                // The locktime check in Core during block validation uses the MTP of the previous
-                // block - which is `chain_tip` here.
-                Ok(self.to_seconds() <= diff.to_u32())
-            }
-            None => Err(InvalidTimeError { chain_tip, utxo_mined_at }),
-        }
+        chain_tip
+            .checked_sub(utxo_mined_at)
+            .ok_or(InvalidTimeError { chain_tip, utxo_mined_at })
+            .map(|diff| self.to_seconds() <= diff.to_u32())
     }
 }
 

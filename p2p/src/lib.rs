@@ -146,7 +146,7 @@ impl encoding::Decoder for ProtocolVersionDecoder {
 
     #[inline]
     fn push_bytes(&mut self, bytes: &mut &[u8]) -> Result<bool, Self::Error> {
-        Ok(self.0.push_bytes(bytes).map_err(ProtocolVersionDecoderError)?)
+        self.0.push_bytes(bytes).map_err(ProtocolVersionDecoderError)
     }
 
     #[inline]
@@ -340,7 +340,7 @@ impl encoding::Decoder for ServiceFlagsDecoder {
 
     #[inline]
     fn push_bytes(&mut self, bytes: &mut &[u8]) -> Result<bool, Self::Error> {
-        Ok(self.0.push_bytes(bytes).map_err(ServiceFlagsDecoderError)?)
+        self.0.push_bytes(bytes).map_err(ServiceFlagsDecoderError)
     }
 
     #[inline]

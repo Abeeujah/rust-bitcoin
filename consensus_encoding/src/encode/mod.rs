@@ -355,10 +355,5 @@ impl<T: Encoder> Encoder for Option<T> {
         }
     }
 
-    fn advance(&mut self) -> bool {
-        match self {
-            Some(encoder) => encoder.advance(),
-            None => false,
-        }
-    }
+    fn advance(&mut self) -> bool { self.as_mut().is_some_and(Encoder::advance) }
 }

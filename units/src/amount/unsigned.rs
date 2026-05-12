@@ -282,8 +282,7 @@ impl Amount {
     pub fn from_sat_hex(s: &str) -> Result<Self, ParseAmountError> {
         let amount = parse_int::hex_u64_prefixed(s)
             .map_err(|e| ParseAmountError(ParseAmountErrorInner::PrefixedHex(e)))?;
-        Ok(Self::from_sat(amount)
-            .map_err(|e| ParseAmountError(ParseAmountErrorInner::OutOfRange(e)))?)
+        Self::from_sat(amount).map_err(|e| ParseAmountError(ParseAmountErrorInner::OutOfRange(e)))
     }
 
     /// Constructs a new `Amount` from an unprefixed hex string.
@@ -296,8 +295,7 @@ impl Amount {
     pub fn from_sat_unprefixed_hex(s: &str) -> Result<Self, ParseAmountError> {
         let amount = parse_int::hex_u64_unprefixed(s)
             .map_err(|e| ParseAmountError(ParseAmountErrorInner::UnprefixedHex(e)))?;
-        Ok(Self::from_sat(amount)
-            .map_err(|e| ParseAmountError(ParseAmountErrorInner::OutOfRange(e)))?)
+        Self::from_sat(amount).map_err(|e| ParseAmountError(ParseAmountErrorInner::OutOfRange(e)))
     }
 
     /// Constructs a new object that implements [`fmt::Display`] in the given [`Denomination`].
