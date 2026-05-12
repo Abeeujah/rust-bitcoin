@@ -85,6 +85,10 @@ using `hashes` in `rust-bitcoin` to see an example. Enjoy!
   }
 ```
 
+# 0.14.1 - 2025-12-03
+
+* remove `doc_auto_cfg`
+
 # 0.14.0 - 2024-03-21
 
 * Bump MSRV to Rust version 1.56.1 [#2188](https://github.com/rust-bitcoin/rust-bitcoin/pull/2188)
@@ -105,6 +109,10 @@ using `hashes` in `rust-bitcoin` to see an example. Enjoy!
 
 * Improve leaf errors [#2530](https://github.com/rust-bitcoin/rust-bitcoin/pull/2530)
 * Implement `From<Infallible>` for errors [#2516](https://github.com/rust-bitcoin/rust-bitcoin/pull/2516)
+
+# 0.13.1 - 2026-04-02
+
+* Remove `doc_auto_cfg` [#5651](https://github.com/rust-bitcoin/rust-bitcoin/pull/5651)
 
 # 0.13.0 - 2023-06-29
 
