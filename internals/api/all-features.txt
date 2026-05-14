@@ -24,6 +24,8 @@ pub const fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::from_slice(slice: &
 pub const fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::new() -> Self
 pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::pop(&mut self) -> core::option::Option<T>
 pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::push(&mut self, element: T)
+impl<'de, T, const CAP: usize> serde::de::Deserialize<'de> for bitcoin_internals::array_vec::ArrayVec<T, CAP> where T: core::marker::Copy + serde::de::Deserialize<'de>
+pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::deserialize<D>(deserializer: D) -> core::result::Result<Self, <D as serde::de::Deserializer>::Error> where D: serde::de::Deserializer<'de>
 impl<T: core::marker::Copy + core::cmp::Eq, const CAP: usize> core::cmp::Eq for bitcoin_internals::array_vec::ArrayVec<T, CAP>
 impl<T: core::marker::Copy + core::cmp::Ord, const CAP: usize> core::cmp::Ord for bitcoin_internals::array_vec::ArrayVec<T, CAP>
 pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::cmp(&self, other: &Self) -> core::cmp::Ordering
@@ -44,6 +46,8 @@ pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::fmt(&self, f: &mut core::
 impl<T: core::marker::Copy + core::hash::Hash, const CAP: usize> core::hash::Hash for bitcoin_internals::array_vec::ArrayVec<T, CAP>
 pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::hash<H: core::hash::Hasher>(&self, state: &mut H)
 impl<T: core::marker::Copy + core::marker::Copy, const CAP: usize> core::marker::Copy for bitcoin_internals::array_vec::ArrayVec<T, CAP>
+impl<T: core::marker::Copy + serde::ser::Serialize, const CAP: usize> serde::ser::Serialize for bitcoin_internals::array_vec::ArrayVec<T, CAP>
+pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::serialize<S>(&self, serializer: S) -> core::result::Result<<S as serde::ser::Serializer>::Ok, <S as serde::ser::Serializer>::Error> where S: serde::ser::Serializer
 impl<T: core::marker::Copy, const CAP: usize> core::clone::Clone for bitcoin_internals::array_vec::ArrayVec<T, CAP>
 pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::clone(&self) -> Self
 impl<T: core::marker::Copy, const CAP: usize> core::default::Default for bitcoin_internals::array_vec::ArrayVec<T, CAP>
@@ -84,6 +88,7 @@ impl<T> core::clone::CloneToUninit for bitcoin_internals::array_vec::ArrayVec<T,
 pub unsafe fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::clone_to_uninit(&self, dest: *mut u8)
 impl<T> core::convert::From<T> for bitcoin_internals::array_vec::ArrayVec<T, CAP>
 pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::from(t: T) -> T
+impl<T> serde::de::DeserializeOwned for bitcoin_internals::array_vec::ArrayVec<T, CAP> where T: for<'de> serde::de::Deserialize<'de>
 pub mod bitcoin_internals::const_casts
 pub const fn bitcoin_internals::const_casts::i16_to_i64(value: i16) -> i64
 pub const fn bitcoin_internals::const_casts::u16_to_u32(value: u16) -> u32
