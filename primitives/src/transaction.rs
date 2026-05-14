@@ -1814,6 +1814,76 @@ mod tests {
 
     #[test]
     #[cfg(feature = "hex")]
+    #[cfg(feature = "alloc")]
+    fn outpoint() {
+        assert_eq!("i don't care".parse::<OutPoint>(), Err(ParseOutPointError::Format));
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:1:1"
+                .parse::<OutPoint>(),
+            Err(ParseOutPointError::Format)
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:".parse::<OutPoint>(),
+            Err(ParseOutPointError::Format)
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:11111111111"
+                .parse::<OutPoint>(),
+            Err(ParseOutPointError::TooLong)
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:01"
+                .parse::<OutPoint>(),
+            Err(ParseOutPointError::VoutNotCanonical)
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:+42"
+                .parse::<OutPoint>(),
+            Err(ParseOutPointError::VoutNotCanonical)
+        );
+        assert_eq!(
+            "i don't care:1".parse::<OutPoint>(),
+            Err(ParseOutPointError::Txid("i don't care".parse::<Txid>().unwrap_err()))
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c945X:1"
+                .parse::<OutPoint>(),
+            Err(ParseOutPointError::Txid(
+                "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c945X"
+                    .parse::<Txid>()
+                    .unwrap_err()
+            ))
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:lol"
+                .parse::<OutPoint>(),
+            Err(ParseOutPointError::Vout(parse_int::int_from_str::<u32>("lol").unwrap_err()))
+        );
+
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:42"
+                .parse::<OutPoint>(),
+            Ok(OutPoint {
+                txid: "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456"
+                    .parse()
+                    .unwrap(),
+                vout: 42,
+            })
+        );
+        assert_eq!(
+            "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456:0"
+                .parse::<OutPoint>(),
+            Ok(OutPoint {
+                txid: "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456"
+                    .parse()
+                    .unwrap(),
+                vout: 0,
+            })
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "hex")]
     fn canonical_vout() {
         assert_eq!(parse_vout("0").unwrap(), 0);
         assert_eq!(parse_vout("1").unwrap(), 1);
@@ -1828,6 +1898,38 @@ mod tests {
         let outpoint_str = "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20:1";
         let outpoint: OutPoint = outpoint_str.parse().unwrap();
         assert_eq!(format!("{}", outpoint), outpoint_str);
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    #[cfg(feature = "hex")]
+    fn outpoint_format() {
+        let outpoint = OutPoint::COINBASE_PREVOUT;
+
+        let debug = "OutPoint { txid: Txid(bitcoin_hashes::sha256d::Hash(0000000000000000000000000000000000000000000000000000000000000000)), vout: 4294967295 }";
+        assert_eq!(debug, format!("{:?}", &outpoint));
+
+        let display = "0000000000000000000000000000000000000000000000000000000000000000:4294967295";
+        assert_eq!(display, format!("{}", &outpoint));
+
+        let pretty_debug = "OutPoint {
+    txid: Txid(
+        bitcoin_hashes::sha256d::Hash(
+            0x0000000000000000000000000000000000000000000000000000000000000000,
+        ),
+    ),
+    vout: 4294967295,
+}";
+        assert_eq!(pretty_debug, format!("{:#?}", &outpoint));
+
+        let debug_txid = "Txid(bitcoin_hashes::sha256d::Hash(0000000000000000000000000000000000000000000000000000000000000000))";
+        assert_eq!(debug_txid, format!("{:?}", &outpoint.txid));
+
+        let display_txid = "0000000000000000000000000000000000000000000000000000000000000000";
+        assert_eq!(display_txid, format!("{}", &outpoint.txid));
+
+        let pretty_txid = "0x0000000000000000000000000000000000000000000000000000000000000000";
+        assert_eq!(pretty_txid, format!("{:#}", &outpoint.txid));
     }
 
     #[test]
@@ -3146,5 +3248,64 @@ mod tests {
     fn decode_error_from_tx(tx: &Transaction) -> TransactionDecoderError {
         let tx_bytes = encoding::encode_to_vec(tx);
         decode_error_from_bytes(&tx_bytes)
+    }
+
+    #[test]
+    #[cfg(feature = "hex")]
+    fn txin() {
+        let txin: Result<TxIn, _> = encoding::decode_from_slice(&hex!("a15d57094aa7a21a28cb20b59aab8fc7d1149a3bdbcddba9c622e4f5f6a99ece010000006c493046022100f93bb0e7d8db7bd46e40132d1f8242026e045f03a0efe71bbb8e3f475e970d790221009337cd7f1f929f00cc6ff01f03729b069a7c21b59b1736ddfee5db5946c5da8c0121033b9b137ee87d5a812d6f506efdd37f0affa7ffc310711c06c7f3e097c9447c52ffffffff"));
+        assert!(txin.is_ok());
+    }
+
+    #[test]
+    #[cfg(feature = "hex")]
+    fn segwit_invalid_transaction() {
+        let tx_bytes = hex!("0000fd000001021921212121212121212121f8b372b0239cc1dff600000000004f4f4f4f4f4f4f4f000000000000000000000000000000333732343133380d000000000000000000000000000000ff000000000009000dff000000000000000800000000000000000d");
+        let tx: Result<Transaction, _> = encoding::decode_from_slice(&tx_bytes);
+        assert!(tx.is_err());
+    }
+
+    #[test]
+    #[cfg(feature = "hex")]
+    fn transaction_version() {
+        let tx_bytes = hex!("ffffffff0100000000000000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac00000000");
+        let tx: Result<Transaction, _> = encoding::decode_from_slice(&tx_bytes);
+        assert!(tx.is_ok());
+        let realtx = tx.unwrap();
+        assert_eq!(realtx.version, Version::maybe_non_standard(u32::MAX));
+    }
+
+    #[test]
+    #[cfg(feature = "hex")]
+    fn tx_no_input_deserialization() {
+        let tx_bytes = hex!(
+            "010000000001000100e1f505000000001976a9140389035a9225b3839e2bbf32d826a1e222031fd888ac00000000"
+        );
+        let tx: Transaction = encoding::decode_from_slice(&tx_bytes).expect("deserialize tx");
+
+        assert_eq!(tx.inputs.len(), 0);
+        assert_eq!(tx.outputs.len(), 1);
+
+        let reser = encoding::encode_to_vec(&tx);
+        assert_eq!(&tx_bytes[..], reser.as_slice());
+    }
+
+    #[test]
+    #[cfg(feature = "hex")]
+    fn ntxid() {
+        let tx_bytes = hex!("0100000001a15d57094aa7a21a28cb20b59aab8fc7d1149a3bdbcddba9c622e4f5f6a99ece010000006c493046022100f93bb0e7d8db7bd46e40132d1f8242026e045f03a0efe71bbb8e3f475e970d790221009337cd7f1f929f00cc6ff01f03729b069a7c21b59b1736ddfee5db5946c5da8c0121033b9b137ee87d5a812d6f506efdd37f0affa7ffc310711c06c7f3e097c9447c52ffffffff0100e1f505000000001976a9140389035a9225b3839e2bbf32d826a1e222031fd888ac00000000");
+        let mut tx: Transaction = encoding::decode_from_slice(&tx_bytes).unwrap();
+
+        let old_ntxid = tx.compute_ntxid();
+        assert_eq!(
+            format!("{:x}", old_ntxid),
+            "c3573dbea28ce24425c59a189391937e00d255150fa973d59d61caf3a06b601d"
+        );
+        // changing sigs does not affect it
+        tx.inputs[0].script_sig = ScriptSigBuf::new();
+        assert_eq!(old_ntxid, tx.compute_ntxid());
+        // changing pks does
+        tx.outputs[0].script_pubkey = ScriptPubKeyBuf::new();
+        assert!(old_ntxid != tx.compute_ntxid());
     }
 }

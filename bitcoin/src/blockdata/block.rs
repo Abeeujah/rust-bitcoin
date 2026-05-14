@@ -421,22 +421,6 @@ mod tests {
     use crate::{block, Amount, CompactTarget, Network, Sequence, TestnetVersion, Witness, Wtxid};
 
     #[test]
-    fn static_vector() {
-        // testnet block 000000000000045e0b1660b6445b5e5c5ab63c9a4f956be7e1e69be04fa4497b
-        let segwit_block = include_bytes!("../../tests/data/testnet_block_000000000000045e0b1660b6445b5e5c5ab63c9a4f956be7e1e69be04fa4497b.raw");
-        let block: Block = deserialize(&segwit_block[..]).expect("failed to deserialize block");
-        assert!(block.check_merkle_root());
-
-        let (header, transactions) = block.into_parts();
-        let block = Block::new_unchecked(header, transactions).assume_checked(None);
-
-        // Same as `block.check_merkle_root` but do it explicitly.
-        let hashes_iter = block.transactions().iter().map(|obj| obj.compute_txid());
-        let from_iter = TxMerkleNode::calculate_root(hashes_iter.clone());
-        assert_eq!(from_iter, Some(block.header().merkle_root));
-    }
-
-    #[test]
     fn coinbase_and_bip34() {
         // testnet block 100,000
         const BLOCK_HEX: &str = "0200000035ab154183570282ce9afc0b494c9fc6a3cfea05aa8c1add2ecc56490000000038ba3d78e4500a5a7570dbe61960398add4410d278b21cd9708e6d9743f374d544fc055227f1001c29c1ea3b0101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff3703a08601000427f1001c046a510100522cfabe6d6d0000000000000000000068692066726f6d20706f6f6c7365727665726aac1eeeed88ffffffff0100f2052a010000001976a914912e2b234f941f30b18afbb4fa46171214bf66c888ac00000000";
@@ -585,22 +569,6 @@ mod tests {
     }
 
     #[test]
-    fn block_version() {
-        let block = hex!("ffffff7f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-        let decode: Result<Block, _> = deserialize(&block);
-        assert!(decode.is_ok());
-
-        let real_decode = decode.unwrap().assume_checked(None);
-        assert_eq!(real_decode.header().version, Version::from_consensus(2147483647));
-
-        let block2 = hex!("000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-        let decode2: Result<Block, _> = deserialize(&block2);
-        assert!(decode2.is_ok());
-        let real_decode2 = decode2.unwrap().assume_checked(None);
-        assert_eq!(real_decode2.header().version, Version::from_consensus(-2147483648));
-    }
-
-    #[test]
     fn validate_pow() {
         let some_header = hex!("010000004ddccd549d28f385ab457e98d1b11ce80bfea2c5ab93015ade4973e400000000bf4473e53794beae34e64fccc471dace6ae544180816f89591894e0f417a914cd74d6e49ffff001d323b3a7b");
         let some_header: Header =
@@ -644,24 +612,6 @@ mod tests {
         let want = block_hash.parse::<BlockHash>().unwrap();
         let got = header.block_hash();
         assert_eq!(got, want)
-    }
-
-    #[test]
-    fn soft_fork_signalling() {
-        for i in 0..31 {
-            let version_int = (0x20000000u32 ^ (1 << i)) as i32;
-            let version = Version::from_consensus(version_int);
-            if i < 29 {
-                assert!(version.is_signalling_soft_fork(i));
-            } else {
-                assert!(!version.is_signalling_soft_fork(i));
-            }
-        }
-
-        let segwit_signal = Version::from_consensus(0x20000000 ^ (1 << 1));
-        assert!(!segwit_signal.is_signalling_soft_fork(0));
-        assert!(segwit_signal.is_signalling_soft_fork(1));
-        assert!(!segwit_signal.is_signalling_soft_fork(2));
     }
 
     #[test]

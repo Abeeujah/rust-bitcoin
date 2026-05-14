@@ -1013,6 +1013,8 @@ mod tests {
     #[cfg(feature = "alloc")]
     use encoding::Decode as _;
     use encoding::{Decoder as _, Encode as _, Encoder as _};
+    #[cfg(feature = "hex")]
+    use hex_unstable::hex;
     #[cfg(feature = "alloc")]
     #[cfg(feature = "hex")]
     #[cfg(feature = "serde")]
@@ -1057,6 +1059,24 @@ mod tests {
     fn version_is_not_signalling() {
         let version = Version::from_consensus(0b0010_0000_0000_0000_0000_0000_0000_0010);
         assert!(!Version::is_signalling_soft_fork(version, 0));
+    }
+
+    #[test]
+    fn soft_fork_signalling() {
+        for i in 0..31 {
+            let version_int = (0x2000_0000u32 ^ (1 << i)) as i32;
+            let version = Version::from_consensus(version_int);
+            if i < 29 {
+                assert!(version.is_signalling_soft_fork(i));
+            } else {
+                assert!(!version.is_signalling_soft_fork(i));
+            }
+        }
+
+        let segwit_signal = Version::from_consensus(0x2000_0000 ^ (1 << 1));
+        assert!(!segwit_signal.is_signalling_soft_fork(0));
+        assert!(segwit_signal.is_signalling_soft_fork(1));
+        assert!(!segwit_signal.is_signalling_soft_fork(2));
     }
 
     #[test]
@@ -2004,5 +2024,41 @@ mod tests {
 
         let roundtrip: Adt = bincode::deserialize(&bytes).expect("failed to deserialize");
         assert_eq!(roundtrip, orig);
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    #[cfg(feature = "hex")]
+    fn block_version() {
+        let block = hex!("ffffff7f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+        let decode: Result<Block<Unchecked>, _> = encoding::decode_from_slice(&block);
+        assert!(decode.is_ok());
+
+        let real_decode = decode.unwrap().assume_checked(None);
+        assert_eq!(real_decode.header().version, Version::from_consensus(2_147_483_647));
+
+        let block2 = hex!("000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+        let decode2: Result<Block<Unchecked>, _> = encoding::decode_from_slice(&block2);
+        assert!(decode2.is_ok());
+        let real_decode2 = decode2.unwrap().assume_checked(None);
+        assert_eq!(real_decode2.header().version, Version::from_consensus(-2_147_483_648));
+    }
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    fn static_vector() {
+        // testnet block 000000000000045e0b1660b6445b5e5c5ab63c9a4f956be7e1e69be04fa4497b
+        let segwit_block = include_bytes!("../tests/data/testnet_block_000000000000045e0b1660b6445b5e5c5ab63c9a4f956be7e1e69be04fa4497b.raw");
+        let block: Block<Unchecked> =
+            encoding::decode_from_slice(&segwit_block[..]).expect("failed to deserialize block");
+        assert!(block.check_merkle_root());
+
+        let (header, transactions) = block.into_parts();
+        let block = Block::new_unchecked(header, transactions).assume_checked(None);
+
+        // Same as `block.check_merkle_root` but do it explicitly.
+        let hashes_iter = block.transactions().iter().map(Transaction::compute_txid);
+        let from_iter = TxMerkleNode::calculate_root(hashes_iter.clone());
+        assert_eq!(from_iter, Some(block.header().merkle_root));
     }
 }

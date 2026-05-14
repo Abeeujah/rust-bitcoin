@@ -1445,6 +1445,19 @@ mod tests {
     }
 
     #[test]
+    fn roundtrip_compact_target() {
+        let consensus = 0x1d00_ffff;
+        let compact = CompactTarget::from_consensus(consensus);
+        let t = Target::from_compact(CompactTarget::from_consensus(consensus));
+        assert_eq!(t, Target::from(compact)); // From/Into sanity check.
+
+        let back = t.to_compact_lossy();
+        assert_eq!(back, compact); // From/Into sanity check.
+
+        assert_eq!(back.to_consensus(), consensus);
+    }
+
+    #[test]
     fn max_target_from_compact() {
         // The highest possible target is defined as 0x1d00ffff
         let bits = 0x1d00_ffff_u32;

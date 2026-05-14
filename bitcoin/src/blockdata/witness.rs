@@ -263,20 +263,6 @@ mod test {
     use crate::Transaction;
 
     #[test]
-    fn exact_sized_iterator() {
-        let mut witness = Witness::default();
-        for i in 0..5 {
-            assert_eq!(witness.iter().len(), i);
-            witness.push([0u8]);
-        }
-        let mut iter = witness.iter();
-        for i in (0..=5).rev() {
-            assert_eq!(iter.len(), i);
-            iter.next();
-        }
-    }
-
-    #[test]
     fn push_ecdsa_sig() {
         // The very first signature in block 734,958
         let sig_bytes =
