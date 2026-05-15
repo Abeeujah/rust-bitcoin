@@ -19,6 +19,10 @@ mod safety_boundary {
         data: [MaybeUninit<T>; CAP],
     }
 
+    /// Error returned when attempting to push an element beyond the capacity of the `ArrayVec`.
+    #[derive(Debug)]
+    pub struct CAPSizeExceeded;
+
     impl<T: Copy, const CAP: usize> ArrayVec<T, CAP> {
         /// Constructs an empty `ArrayVec`.
         #[must_use]
@@ -68,6 +72,20 @@ mod safety_boundary {
             assert!(self.len < CAP);
             self.data[self.len] = MaybeUninit::new(element);
             self.len += 1;
+        }
+
+        /// Adds an element into `self`.
+        ///
+        /// # Errors
+        ///
+        /// Returns `CAPSizeExceeded` if the `ArrayVec` is full.
+        pub fn try_push(&mut self, element: T) -> Result<(), CAPSizeExceeded> {
+            if self.len >= CAP {
+                return Err(CAPSizeExceeded);
+            }
+            self.data[self.len] = MaybeUninit::new(element);
+            self.len += 1;
+            Ok(())
         }
 
         /// Removes the last element, returning it.
