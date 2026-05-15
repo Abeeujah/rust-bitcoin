@@ -24,6 +24,7 @@ pub const fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::from_slice(slice: &
 pub const fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::new() -> Self
 pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::pop(&mut self) -> core::option::Option<T>
 pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::push(&mut self, element: T)
+pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::try_push(&mut self, element: T) -> core::result::Result<(), bitcoin_internals::array_vec::safety_boundary::CAPSizeExceeded>
 impl<'de, T, const CAP: usize> serde::de::Deserialize<'de> for bitcoin_internals::array_vec::ArrayVec<T, CAP> where T: core::marker::Copy + serde::de::Deserialize<'de>
 pub fn bitcoin_internals::array_vec::ArrayVec<T, CAP>::deserialize<D>(deserializer: D) -> core::result::Result<Self, <D as serde::de::Deserializer>::Error> where D: serde::de::Deserializer<'de>
 impl<T: core::marker::Copy + core::cmp::Eq, const CAP: usize> core::cmp::Eq for bitcoin_internals::array_vec::ArrayVec<T, CAP>
