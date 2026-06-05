@@ -54,6 +54,93 @@ impl<D> From<std::io::Error> for ReadError<D> {
     fn from(e: std::io::Error) -> Self { Self::Io(e) }
 }
 
+/// An error that can occur when encoding using an async poll-write callback.
+///
+/// The `E` type parameter is the error type produced by the caller-supplied write callback (for
+/// example, `std::io::Error` when adapting a runtime's `AsyncWrite`).
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum AsyncWriteError<E> {
+    /// The write callback returned an error.
+    Write(E),
+    /// The write callback reported writing zero bytes for a non-empty buffer.
+    WriteZero,
+    /// The write callback reported writing more bytes than were provided.
+    WroteTooManyBytes,
+}
+
+impl<E> From<Infallible> for AsyncWriteError<E> {
+    fn from(never: Infallible) -> Self { match never {} }
+}
+
+impl<E: fmt::Display> fmt::Display for AsyncWriteError<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Write(ref e) => write_err!(f, "async write error"; e),
+            Self::WriteZero => write!(f, "write callback wrote zero bytes for a non-empty buffer"),
+            Self::WroteTooManyBytes =>
+                write!(f, "write callback reported writing more bytes than were provided"),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<E> std::error::Error for AsyncWriteError<E>
+where
+    E: std::error::Error + 'static,
+{
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Write(ref e) => Some(e),
+            Self::WriteZero | Self::WroteTooManyBytes => None,
+        }
+    }
+}
+
+/// An error that can occur when decoding using an async poll-read callback.
+///
+/// The `D` type parameter is the decoder's error type and `E` is the error type produced by the
+/// caller-supplied read callback (for example, `std::io::Error` when adapting a runtime's
+/// `AsyncRead`).
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum AsyncReadError<D, E> {
+    /// The read callback returned an error.
+    Read(E),
+    /// The decoder encountered an error while parsing the data.
+    Decode(D),
+    /// The read callback reported reading more bytes than the provided buffer length.
+    ReadTooManyBytes,
+}
+
+impl<D, E> From<Infallible> for AsyncReadError<D, E> {
+    fn from(never: Infallible) -> Self { match never {} }
+}
+
+impl<D: fmt::Display, E: fmt::Display> fmt::Display for AsyncReadError<D, E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Read(ref e) => write_err!(f, "async read error"; e),
+            Self::Decode(ref e) => write_err!(f, "decode error"; e),
+            Self::ReadTooManyBytes =>
+                write!(f, "read callback reported reading more bytes than the buffer length"),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<D, E> std::error::Error for AsyncReadError<D, E>
+where
+    D: std::error::Error + 'static,
+    E: std::error::Error + 'static,
+{
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Read(ref e) => Some(e),
+            Self::Decode(ref e) => Some(e),
+            Self::ReadTooManyBytes => None,
+        }
+    }
+}
+
 /// An error that can occur when decoding from a byte slice.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DecodeError<Err> {

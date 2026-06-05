@@ -382,6 +382,131 @@ where
     Ok(())
 }
 
+/// Encodes an object using an async poll-write callback.
+///
+/// This is the runtime-neutral, `no_std`-compatible async equivalent of [`encode_to_writer`].
+/// the caller supplies a callback with [`poll_write`]-like semantics, which can adapt any
+/// async runtime (tokio, smol, embassy, ...).
+///
+/// The callback is called with the current [`Context`] and a non-empty byte slice. For that slice
+/// it must eventually return:
+///
+/// * `Poll::Ready(Ok(n))` with `0 < n <= bytes.len()` indicating `n` bytes were written, or
+/// * `Poll::Ready(Err(e))` if writing failed, or
+/// * `Poll::Pending` after arranging for the current task to be woken.
+///
+/// [`poll_write`]: https://docs.rs/futures/latest/futures/io/trait.AsyncWrite.html#tymethod.poll_write
+///
+/// # Errors
+///
+/// Returns [`AsyncWriteError::Write`] if the callback errors, [`AsyncWriteError::WriteZero`] if the
+/// callback reports writing zero bytes for a non-empty buffer, or
+/// [`AsyncWriteError::WroteTooManyBytes`] if it reports writing more bytes than were provided.
+///
+/// Returning [`Poll::Pending`] from the callback has normal [`poll_write`] semantics: no bytes are
+/// considered written for that call and the task must be arranged to wake when progress is possible.
+///
+/// # Cancellation
+///
+/// This future has write-all semantics and is not restartably cancellation-safe. If it is dropped
+/// before completion the callback may already have accepted a prefix of the encoding; there is no
+/// way to resume from that point, so re-encoding the same object to the same writer would duplicate
+/// those bytes.
+///
+/// [`Poll::Pending`]: core::task::Poll::Pending
+///
+/// # Examples
+///
+/// ```
+/// # #[cfg(feature = "alloc")] {
+/// # use core::task::{Context, Poll};
+/// # use bitcoin_consensus_encoding::{encoder_newtype, encode_to_async_writer, AsyncWriteError, Encode, ArrayEncoder};
+/// # struct Foo([u8; 4]);
+/// # encoder_newtype! { pub struct FooEncoder<'e>(ArrayEncoder<4>); }
+/// # impl Encode for Foo {
+/// #     type Encoder<'e> = FooEncoder<'e> where Self: 'e;
+/// #     fn encoder(&self) -> Self::Encoder<'_> { FooEncoder::new(ArrayEncoder::without_length_prefix(self.0)) }
+/// # }
+/// # async fn run() -> Result<(), AsyncWriteError<core::convert::Infallible>> {
+/// let foo = Foo([0xde, 0xad, 0xbe, 0xef]);
+/// let mut out = Vec::new();
+/// // A trivial synchronous-completing callback that writes into a Vec.
+/// encode_to_async_writer(&foo, |_cx: &mut Context<'_>, bytes: &[u8]| {
+///     out.extend_from_slice(bytes);
+///     Poll::Ready(Ok(bytes.len()))
+/// }).await?;
+/// assert_eq!(out, vec![0xde, 0xad, 0xbe, 0xef]);
+/// # Ok(())
+/// # }
+/// # }
+/// ```
+///
+/// Adapting a real async writer is a matter of forwarding to its `poll_write`. For a
+/// [`futures::io::AsyncWrite`] (whose `poll_write` maps 1:1 to the callback) it looks like this:
+///
+/// ```ignore
+/// use core::pin::Pin;
+/// use futures::io::AsyncWrite;
+/// use bitcoin_consensus_encoding::{encode_to_async_writer, AsyncWriteError, Encode};
+///
+/// async fn write_it<T: Encode, W: AsyncWrite + Unpin>(
+///     object: &T,
+///     mut writer: W,
+/// ) -> Result<(), AsyncWriteError<std::io::Error>> {
+///     encode_to_async_writer(object, |cx, bytes| Pin::new(&mut writer).poll_write(cx, bytes)).await
+/// }
+/// ```
+///
+/// [`futures::io::AsyncWrite`]: https://docs.rs/futures/latest/futures/io/trait.AsyncWrite.html
+pub async fn encode_to_async_writer<T, W, E>(
+    object: &T,
+    poll_write: W,
+) -> Result<(), crate::AsyncWriteError<E>>
+where
+    T: Encode + ?Sized,
+    W: FnMut(&mut core::task::Context<'_>, &[u8]) -> core::task::Poll<Result<usize, E>>,
+{
+    let mut encoder = object.encoder();
+    drain_to_async_writer(&mut encoder, poll_write).await
+}
+
+/// Drains the output of an [`Encoder`] using an async poll-write callback.
+///
+/// See [`encode_to_async_writer`] for the callback contract and error semantics.
+///
+/// # Errors
+///
+/// See [`encode_to_async_writer`].
+pub async fn drain_to_async_writer<T, W, E>(
+    encoder: &mut T,
+    mut poll_write: W,
+) -> Result<(), crate::AsyncWriteError<E>>
+where
+    T: Encoder + ?Sized,
+    W: FnMut(&mut core::task::Context<'_>, &[u8]) -> core::task::Poll<Result<usize, E>>,
+{
+    use crate::AsyncWriteError;
+
+    loop {
+        let mut chunk = encoder.current_chunk();
+        while !chunk.is_empty() {
+            let written = core::future::poll_fn(|cx| poll_write(cx, chunk))
+                .await
+                .map_err(AsyncWriteError::Write)?;
+            if written > chunk.len() {
+                return Err(AsyncWriteError::WroteTooManyBytes);
+            }
+            if written == 0 {
+                return Err(AsyncWriteError::WriteZero);
+            }
+            chunk = &chunk[written..];
+        }
+        if encoder.advance().has_finished() {
+            return Ok(());
+        }
+    }
+}
+
 /// Checks that the given `value` encodes to `expected`, panicking if it doesn't.
 ///
 /// Note that the function does not impose any requirements on chunking - whether the encoded bytes

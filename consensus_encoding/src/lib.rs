@@ -40,6 +40,10 @@
 //! * [`decode_from_read_unbuffered_with`]: As above with custom sized stack-allocated buffer.
 //! * [`decode_from_slice`]: Decode from a byte slice (errors if slice is not completely consumed).
 //! * [`decode_from_slice_unbounded`]: Slice can contain additional data after decoding completes.
+//! * [`decode_from_async_read_with_buffer`]: Decode using an async poll-read callback and a
+//!   caller-provided buffer.
+//! * [`decode_from_async_read_unbuffered`]: As above with an internal 4k buffer.
+//! * [`decode_from_async_read_unbuffered_with`]: As above with custom sized internal buffer.
 //!
 //! And on the encoding side we provide:
 //!
@@ -47,6 +51,12 @@
 //! * [`drain_to_writer`]: Drain an encoder to a stdlib writer.
 //! * [`encode_to_vec`]: Encode to the heap.
 //! * [`drain_to_vec`]: Drain an encoder to the heap.
+//! * [`encode_to_async_writer`]: Encode using an async poll-write callback.
+//! * [`drain_to_async_writer`]: Drain an encoder using an async poll-write callback.
+//!
+//! The async drivers are runtime-neutral and `no_std`-compatible: they take a callback with
+//! [`poll_write`](https://docs.rs/futures/latest/futures/io/trait.AsyncWrite.html#tymethod.poll_write)/[`poll_read`](https://docs.rs/futures/latest/futures/io/trait.AsyncRead.html#tymethod.poll_read)
+//! semantics, so the caller adapts whichever async runtime they use.
 //!
 //! # Feature Flags
 //!
@@ -79,8 +89,9 @@ pub use self::decode::decoders::{ArrayDecoder, Decoder2, Decoder3, Decoder4, Dec
 pub use self::decode::decoders::{ByteVecDecoder, VecDecoder};
 #[doc(inline)]
 pub use self::decode::{
-    check_decode, check_decoder, decode_from_slice, decode_from_slice_unbounded, Decode, Decoder,
-    DecoderStatus,
+    check_decode, check_decoder, decode_from_async_read_unbuffered,
+    decode_from_async_read_unbuffered_with, decode_from_async_read_with_buffer, decode_from_slice,
+    decode_from_slice_unbounded, Decode, Decoder, DecoderStatus,
 };
 #[cfg(feature = "std")]
 #[doc(inline)]
@@ -94,7 +105,8 @@ pub use self::encode::encoders::{
 };
 #[doc(inline)]
 pub use self::encode::{
-    check_encode, check_encoder, Encode, Encoder, EncoderByteIter, EncoderStatus, ExactSizeEncoder,
+    check_encode, check_encoder, drain_to_async_writer, encode_to_async_writer, Encode, Encoder,
+    EncoderByteIter, EncoderStatus, ExactSizeEncoder,
 };
 #[cfg(feature = "alloc")]
 #[doc(inline)]
@@ -108,11 +120,11 @@ pub use self::error::LengthPrefixExceedsMaxError;
 #[cfg(feature = "std")]
 #[doc(no_inline)]
 pub use self::error::ReadError;
+#[doc(no_inline)]
+pub use self::error::{
+    AsyncReadError, AsyncWriteError, CompactSizeDecoderError, DecodeError, Decoder2Error,
+    Decoder3Error, Decoder4Error, Decoder6Error, UnconsumedError, UnexpectedEofError,
+};
 #[cfg(feature = "alloc")]
 #[doc(no_inline)]
 pub use self::error::{ByteVecDecoderError, VecDecoderError};
-#[doc(no_inline)]
-pub use self::error::{
-    CompactSizeDecoderError, DecodeError, Decoder2Error, Decoder3Error, Decoder4Error,
-    Decoder6Error, UnconsumedError, UnexpectedEofError,
-};

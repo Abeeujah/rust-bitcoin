@@ -6,7 +6,7 @@ pub mod decoders;
 
 #[cfg(feature = "std")]
 use crate::ReadError;
-use crate::{DecodeError, UnconsumedError};
+use crate::{AsyncReadError, DecodeError, UnconsumedError};
 
 /// A Bitcoin object which can be consensus-decoded using a push decoder.
 ///
@@ -301,6 +301,180 @@ where
     }
 
     decoder.end().map_err(ReadError::Decode)
+}
+
+/// Decodes an object using an async poll-read callback and a caller-provided buffer.
+///
+/// This is the runtime-neutral, `no_std`-compatible async equivalent of
+/// [`decode_from_read_unbuffered`], the caller supplies a callback with
+/// [`poll_read`]-like semantics, which can adapt any async runtime (tokio, smol, embassy, ...).
+///
+/// The `buffer` is reused across reads. Because, unlike the `unbuffered` variants, the buffer is
+/// owned by the caller, it does not become part of the returned future. This makes it the preferred
+/// choice for `no_std`/embedded callers who want to control the buffer's size and location.
+///
+/// The callback is called with the current [`Context`] and a mutable buffer slice. It must
+/// eventually return:
+///
+/// * `Poll::Ready(Ok(n))` with `n <= buffer.len()` indicating `n` bytes were read (`n == 0`
+///   signals EOF), or
+/// * `Poll::Ready(Err(e))` if reading failed, or
+/// * `Poll::Pending` after arranging for the current task to be woken.
+///
+/// [`poll_read`]: https://docs.rs/futures/latest/futures/io/trait.AsyncRead.html#tymethod.poll_read
+///
+/// # Errors
+///
+/// Returns [`AsyncReadError::Read`] if the callback errors, [`AsyncReadError::Decode`] if the
+/// decoder errors, or [`AsyncReadError::ReadTooManyBytes`] if the callback reports reading more
+/// bytes than the provided buffer length.
+///
+/// Returning [`Poll::Pending`] from the callback has normal [`poll_read`] semantics: no bytes are
+/// considered read for that call and the task must be arranged to wake when progress is possible.
+/// The callback is only invoked with a non-empty destination slice; an empty `buffer` is treated as
+/// EOF and the decoder is finalized without calling the callback.
+///
+/// # Cancellation
+///
+/// This future is not restartably cancellation-safe. If it is dropped before completion, bytes may
+/// already have been read from the underlying reader and incorporated into the (now dropped) decoder
+/// state. Restarting a decode on the same reader would therefore lose those bytes.
+///
+/// [`Poll::Pending`]: core::task::Poll::Pending
+///
+/// # Examples
+///
+/// ```
+/// # use core::task::{Context, Poll};
+/// # use bitcoin_consensus_encoding::{decode_from_async_read_with_buffer, AsyncReadError, Decode, Decoder, DecoderStatus, ArrayDecoder, UnexpectedEofError};
+/// # #[derive(Debug, PartialEq)] struct Foo([u8; 4]);
+/// # #[derive(Default)] struct FooDecoder(ArrayDecoder<4>);
+/// # impl Decoder for FooDecoder {
+/// #     type Output = Foo;
+/// #     type Error = UnexpectedEofError;
+/// #     fn push_bytes(&mut self, bytes: &mut &[u8]) -> Result<DecoderStatus, Self::Error> { self.0.push_bytes(bytes) }
+/// #     fn end(self) -> Result<Self::Output, Self::Error> { self.0.end().map(Foo) }
+/// #     fn read_limit(&self) -> usize { self.0.read_limit() }
+/// # }
+/// # impl Decode for Foo { type Decoder = FooDecoder; }
+/// # async fn run() -> Result<(), AsyncReadError<UnexpectedEofError, core::convert::Infallible>> {
+/// let data = [0xde, 0xad, 0xbe, 0xef];
+/// let mut pos = 0;
+/// let mut buffer = [0u8; 64];
+/// // A trivial synchronous-completing callback that reads from an in-memory slice.
+/// let foo: Foo = decode_from_async_read_with_buffer(|_cx: &mut Context<'_>, dst: &mut [u8]| {
+///     let n = (data.len() - pos).min(dst.len());
+///     dst[..n].copy_from_slice(&data[pos..pos + n]);
+///     pos += n;
+///     Poll::Ready(Ok(n))
+/// }, &mut buffer).await?;
+/// assert_eq!(foo, Foo([0xde, 0xad, 0xbe, 0xef]));
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Adapting a real async reader is a matter of forwarding to its `poll_read`. For a
+/// [`futures::io::AsyncRead`] (whose `poll_read` maps 1:1 to the callback) it looks like this:
+///
+/// ```ignore
+/// use core::pin::Pin;
+/// use futures::io::AsyncRead;
+/// use bitcoin_consensus_encoding::{decode_from_async_read_with_buffer, AsyncReadError, Decode, Decoder};
+///
+/// async fn read_it<T: Decode, R: AsyncRead + Unpin>(
+///     mut reader: R,
+///     buffer: &mut [u8],
+/// ) -> Result<T, AsyncReadError<<T::Decoder as Decoder>::Error, std::io::Error>> {
+///     decode_from_async_read_with_buffer(|cx, dst| Pin::new(&mut reader).poll_read(cx, dst), buffer).await
+/// }
+/// ```
+///
+/// [`futures::io::AsyncRead`]: https://docs.rs/futures/latest/futures/io/trait.AsyncRead.html
+pub async fn decode_from_async_read_with_buffer<T, R, E>(
+    mut poll_read: R,
+    buffer: &mut [u8],
+) -> Result<T, AsyncReadError<<T::Decoder as Decoder>::Error, E>>
+where
+    T: Decode,
+    R: FnMut(&mut core::task::Context<'_>, &mut [u8]) -> core::task::Poll<Result<usize, E>>,
+{
+    let mut decoder = T::decoder();
+
+    while decoder.read_limit() > 0 {
+        let limit = decoder.read_limit().min(buffer.len());
+        if limit == 0 {
+            // Reachable when `buffer` is empty but the decoder still needs input. No progress is
+            // possible, so treat it like EOF and let the decoder finalize (or error).
+            return decoder.end().map_err(AsyncReadError::Decode);
+        }
+
+        let dst = &mut buffer[..limit];
+        let bytes_read =
+            core::future::poll_fn(|cx| poll_read(cx, dst)).await.map_err(AsyncReadError::Read)?;
+
+        if bytes_read > limit {
+            return Err(AsyncReadError::ReadTooManyBytes);
+        }
+        if bytes_read == 0 {
+            // EOF, but still try to finalize the decoder.
+            return decoder.end().map_err(AsyncReadError::Decode);
+        }
+
+        let mut input = &buffer[..bytes_read];
+        let status = decoder.push_bytes(&mut input).map_err(AsyncReadError::Decode)?;
+        debug_assert!(
+            input.is_empty(),
+            "decoder.read_limit() allowed bytes that push_bytes did not consume"
+        );
+        if status.is_ready() {
+            return decoder.end().map_err(AsyncReadError::Decode);
+        }
+    }
+
+    decoder.end().map_err(AsyncReadError::Decode)
+}
+
+/// Decodes an object using an async poll-read callback and a 4096 byte internal buffer.
+///
+/// This is the async equivalent of [`decode_from_read_unbuffered`]. The internal buffer becomes
+/// part of the returned future; `no_std`/embedded callers may prefer
+/// [`decode_from_async_read_with_buffer`] or [`decode_from_async_read_unbuffered_with`] with a
+/// smaller buffer.
+///
+/// See [`decode_from_async_read_with_buffer`] for the callback contract.
+///
+/// # Errors
+///
+/// See [`decode_from_async_read_with_buffer`].
+pub async fn decode_from_async_read_unbuffered<T, R, E>(
+    poll_read: R,
+) -> Result<T, AsyncReadError<<T::Decoder as Decoder>::Error, E>>
+where
+    T: Decode,
+    R: FnMut(&mut core::task::Context<'_>, &mut [u8]) -> core::task::Poll<Result<usize, E>>,
+{
+    decode_from_async_read_unbuffered_with::<T, R, E, 4096>(poll_read).await
+}
+
+/// Decodes an object using an async poll-read callback and a custom-sized internal buffer.
+///
+/// This is the async equivalent of [`decode_from_read_unbuffered_with`]. The internal
+/// `BUFFER_SIZE`-byte buffer becomes part of the returned future.
+///
+/// See [`decode_from_async_read_with_buffer`] for the callback contract.
+///
+/// # Errors
+///
+/// See [`decode_from_async_read_with_buffer`].
+pub async fn decode_from_async_read_unbuffered_with<T, R, E, const BUFFER_SIZE: usize>(
+    poll_read: R,
+) -> Result<T, AsyncReadError<<T::Decoder as Decoder>::Error, E>>
+where
+    T: Decode,
+    R: FnMut(&mut core::task::Context<'_>, &mut [u8]) -> core::task::Poll<Result<usize, E>>,
+{
+    let mut buffer = [0u8; BUFFER_SIZE];
+    decode_from_async_read_with_buffer::<T, R, E>(poll_read, &mut buffer).await
 }
 
 /// Checks that the given bytes decode to the expected value, panicking if they don't.
