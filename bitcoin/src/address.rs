@@ -86,8 +86,10 @@ crate::internal_macros::define_extension_trait! {
             } else if script.is_witness_program() {
                 let opcode = script.first_opcode().expect("is_witness_program guarantees len > 4");
 
-                let version = WitnessVersion::try_from(opcode)?;
-                let program = WitnessProgram::new(version, &script.as_bytes()[2..])?;
+                let version = WitnessVersion::try_from(opcode)
+                    .map_err(FromScriptError::WitnessVersion)?;
+                let program = WitnessProgram::new(version, &script.as_bytes()[2..])
+                    .map_err(FromScriptError::WitnessProgram)?;
                 Ok(Self::from_witness_program(program, network))
             } else {
                 Err(FromScriptError::UnrecognizedScript)
@@ -422,7 +424,7 @@ mod tests {
     #[test]
     fn pay_to_anchor_address_regtest() {
         // Verify that P2A uses the expected address for regtest.
-        // This test-vector is borrowed from the bitcoin source code.
+        // This test-vector is borrowed from the Bitcoin Core source code.
         let address_str = "bcrt1pfeesnyr2tx";
 
         let script = ScriptPubKeyBuf::new_p2a();

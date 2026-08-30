@@ -5,7 +5,7 @@
 //! This module mainly introduces the [`Amount`] and [`SignedAmount`] types.
 //! We refer to the documentation on the types for more information.
 
-mod result;
+mod ops;
 mod signed;
 #[cfg(test)]
 mod tests;
@@ -355,6 +355,7 @@ enum InnerParseError {
 }
 
 impl From<Infallible> for InnerParseError {
+    #[inline]
     fn from(never: Infallible) -> Self { match never {} }
 }
 
@@ -643,6 +644,7 @@ enum DisplayStyle {
 
 #[cfg(feature = "arbitrary")]
 impl<'a> Arbitrary<'a> for Denomination {
+    #[inline]
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let choice = u.int_in_range(0..=5)?;
         match choice {

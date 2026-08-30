@@ -22,7 +22,7 @@ mod encapsulate {
 
     /// A signed amount.
     ///
-    /// The [`SignedAmount`] type can be used to express Bitcoin amounts that support arithmetic and
+    /// The [`SignedAmount`] type can be used to express bitcoin amounts that support arithmetic and
     /// conversion to various denominations. The [`SignedAmount`] type does not implement [`serde`]
     /// traits but we do provide modules for serializing as satoshis or bitcoin.
     ///
@@ -279,7 +279,7 @@ impl SignedAmount {
         Self::from_sat_u64(amount)
     }
 
-    /// Expresses this [`SignedAmount`] as a floating-point value in Bitcoin.
+    /// Expresses this [`SignedAmount`] as a floating-point value in bitcoin.
     ///
     /// Please be aware of the risk of using floating-point numbers.
     ///
@@ -526,13 +526,14 @@ impl default::Default for SignedAmount {
 }
 
 impl fmt::Debug for SignedAmount {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "SignedAmount({} SAT)", self.to_sat())
     }
 }
 
 // No one should depend on a binding contract for Display for this type.
-// Just using Bitcoin denominated string.
+// Just using bitcoin denominated string.
 impl fmt::Display for SignedAmount {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -574,6 +575,7 @@ impl From<Amount> for SignedAmount {
 
 #[cfg(feature = "arbitrary")]
 impl<'a> Arbitrary<'a> for SignedAmount {
+    #[inline]
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let sats = u.int_in_range(Self::MIN.to_sat()..=Self::MAX.to_sat())?;
         Ok(Self::from_sat(sats).expect("range is valid"))

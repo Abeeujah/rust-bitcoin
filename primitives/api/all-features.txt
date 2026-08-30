@@ -2742,6 +2742,8 @@ impl core::ops::index::IndexMut<core::ops::range::RangeToInclusive<usize>> for b
   pub fn bitcoin_primitives::script::PushBytes::index_mut(&mut self, index: core::ops::range::RangeToInclusive<usize>) -> &mut Self::Output [impl: impl core::ops::index::IndexMut<core::ops::range::RangeToInclusive<usize>> for bitcoin_primitives::script::PushBytes]
 impl core::ops::index::IndexMut<usize> for bitcoin_primitives::script::PushBytes
   pub fn bitcoin_primitives::script::PushBytes::index_mut(&mut self, index: usize) -> &mut Self::Output [impl: impl core::ops::index::IndexMut<usize> for bitcoin_primitives::script::PushBytes]
+impl<'a> arbitrary::Arbitrary<'a> for &'a bitcoin_primitives::script::PushBytes
+  pub fn &'a bitcoin_primitives::script::PushBytes::arbitrary(u: &mut arbitrary::unstructured::Unstructured<'a>) -> arbitrary::error::Result<Self> [impl: impl<'a> arbitrary::Arbitrary<'a> for &'a bitcoin_primitives::script::PushBytes]
 impl<'a> core::convert::From<&'a [u8; 0]> for &'a bitcoin_primitives::script::PushBytes
   pub fn &'a bitcoin_primitives::script::PushBytes::from(bytes: &'a [u8; 0]) -> Self [impl: impl<'a> core::convert::From<&'a [u8; 0]> for &'a bitcoin_primitives::script::PushBytes]
 impl<'a> core::convert::From<&'a [u8; 10]> for &'a bitcoin_primitives::script::PushBytes
@@ -3289,6 +3291,8 @@ impl core::ops::deref::Deref for bitcoin_primitives::script::PushBytesBuf
   pub fn bitcoin_primitives::script::PushBytesBuf::deref(&self) -> &Self::Target [impl: impl core::ops::deref::Deref for bitcoin_primitives::script::PushBytesBuf]
 impl core::ops::deref::DerefMut for bitcoin_primitives::script::PushBytesBuf
   pub fn bitcoin_primitives::script::PushBytesBuf::deref_mut(&mut self) -> &mut Self::Target [impl: impl core::ops::deref::DerefMut for bitcoin_primitives::script::PushBytesBuf]
+impl<'a> arbitrary::Arbitrary<'a> for bitcoin_primitives::script::PushBytesBuf
+  pub fn bitcoin_primitives::script::PushBytesBuf::arbitrary(u: &mut arbitrary::unstructured::Unstructured<'a>) -> arbitrary::error::Result<Self> [impl: impl<'a> arbitrary::Arbitrary<'a> for bitcoin_primitives::script::PushBytesBuf]
 impl<'a> core::convert::From<&'a [u8; 0]> for bitcoin_primitives::script::PushBytesBuf
   pub fn bitcoin_primitives::script::PushBytesBuf::from(bytes: &'a [u8; 0]) -> Self [impl: impl<'a> core::convert::From<&'a [u8; 0]> for bitcoin_primitives::script::PushBytesBuf]
 impl<'a> core::convert::From<&'a [u8; 10]> for bitcoin_primitives::script::PushBytesBuf
@@ -6454,6 +6458,8 @@ impl core::str::traits::FromStr for bitcoin_primitives::witness_version::Witness
   pub fn bitcoin_primitives::witness_version::WitnessVersion::from_str(s: &str) -> core::result::Result<Self, Self::Err> [impl: impl core::str::traits::FromStr for bitcoin_primitives::witness_version::WitnessVersion]
 impl serde::ser::Serialize for bitcoin_primitives::witness_version::WitnessVersion
   pub fn bitcoin_primitives::witness_version::WitnessVersion::serialize<S>(&self, serializer: S) -> core::result::Result<<S as serde::ser::Serializer>::Ok, <S as serde::ser::Serializer>::Error> where S: serde::ser::Serializer [impl: impl serde::ser::Serialize for bitcoin_primitives::witness_version::WitnessVersion]
+impl<'a> arbitrary::Arbitrary<'a> for bitcoin_primitives::witness_version::WitnessVersion
+  pub fn bitcoin_primitives::witness_version::WitnessVersion::arbitrary(u: &mut arbitrary::unstructured::Unstructured<'a>) -> arbitrary::error::Result<Self> [impl: impl<'a> arbitrary::Arbitrary<'a> for bitcoin_primitives::witness_version::WitnessVersion]
 impl<'de> serde::de::Deserialize<'de> for bitcoin_primitives::witness_version::WitnessVersion
   pub fn bitcoin_primitives::witness_version::WitnessVersion::deserialize<D>(deserializer: D) -> core::result::Result<Self, <D as serde::de::Deserializer>::Error> where D: serde::de::Deserializer<'de> [impl: impl<'de> serde::de::Deserialize<'de> for bitcoin_primitives::witness_version::WitnessVersion]
 impl core::marker::Freeze for bitcoin_primitives::witness_version::WitnessVersion
